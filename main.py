@@ -1,8 +1,8 @@
 import arcade
 
 # Задаём размер окна
-SCREEN_WIDTH = 1800
-SCREEN_HEIGHT = 900
+SCREEN_WIDTH = 1900
+SCREEN_HEIGHT = 1050
 RESIZABLE = True
 SCREEN_TITLE = "Bomber"
 
@@ -71,55 +71,6 @@ class Hero(arcade.Sprite):
         self.is_walking = dx or dy
         
         
-class BoxBorder:
-    """Класс для создания границы из коробочек по всему периметру"""
-    def __init__(self, window_width, window_height):
-        self.window_width = window_width
-        self.window_height = window_height
-        
-        # Загружаем текстуру
-        self.wall_texture = arcade.load_texture("assets/Tiles/block_blue.png")
-        
-        # Создаем список для хранения всех коробочек
-        self.wall_list = arcade.SpriteList()
-        
-        self.create_full_border()
-    
-    def create_full_border(self):
-        """Создает границу по всему периметру экрана"""
-        tile_size = 128  # Размер плитки
-        
-        # Верхняя граница
-        for x in range(0, self.window_width, tile_size):
-            self.add_box(x + tile_size // 2, 
-                        self.window_height - tile_size // 2)
-        
-        # Нижняя граница
-        for x in range(0, self.window_width, tile_size):
-            self.add_box(x + tile_size // 2, 
-                        tile_size // 2)
-        
-        # Боковые границы (без углов, чтобы не дублировать)
-        for y in range(tile_size, self.window_height - tile_size, tile_size):
-            # Левая граница
-            self.add_box(tile_size // 2, y)
-            # Правая граница
-            self.add_box(self.window_width - tile_size // 2, y)
-    
-    def add_box(self, center_x, center_y):
-        """Добавляет одну коробочку"""
-        wall = arcade.Sprite()
-        wall.texture = self.wall_texture
-        wall.center_x = center_x
-        wall.center_y = center_y
-        self.wall_list.append(wall)
-    
-    
-    def get_wall_list(self):
-        """Возвращает список стен для проверки столкновений"""
-        return self.wall_list
-         
-        
 class MyGame(arcade.Window):
     def __init__(self, width, height, title, resizable=False):
         super().__init__(width, height, title,resizable)
@@ -128,16 +79,61 @@ class MyGame(arcade.Window):
     def setup(self):
         self.player_list = arcade.SpriteList()
         self.player = Hero()
-        self.box = BoxBorder(self.width, self.height)
-        self.player_list.append(self.player)
+        #self.player_list.append(self.player)
         self.keys_pressed = set()
+        """Настраиваем игру здесь. Вызывается при старте и при рестарте"""
+        # Инициализируем списки спрайтов
+        self.wallIndestructible_list = arcade.SpriteList()  # Сюда попадёт слой Collision!
+        self.wallI_destroy_list = arcade.SpriteList()
+        # ===== ВОЛШЕБСТВО ЗАГРУЗКИ КАРТЫ! (Почти без магии.) =====
+        # Грузим тайловую карту
+        map_name = "gg.tmx"
+        TILE_SCALING = 1.0
+        # Параметр 'scaling' ОЧЕНЬ важен! Умножает размер каждого тайла
+        tile_map = arcade.load_tilemap(map_name, scaling=TILE_SCALING)
+
+        # --- Достаём слои из карты как спрайт-листы ---
+        # Слой "walls" (стены) — просто для отрисовки
+        self.Indestructible_list = tile_map.sprite_lists["Indestructible"]
+        # Слой "chests" (сундуки) — красота!
+        self.destructible_list = tile_map.sprite_lists["destructible"]
+        # Слой "exit" (выходы с уровня) — красота!
+        self.Background_list = tile_map.sprite_lists["Background"]
+        # САМЫЙ ГЛАВНЫЙ СЛОЙ: "Collision" — наши стены и платформы для физики!
+        self.collision_list = tile_map.sprite_lists["Colision"]
+        self.destroy_list = tile_map.sprite_lists["Destroy"]
+        # --- Создаём игрока ---
+        # Карту загрузили, теперь создаём героя, который будет по ней бегать
+        # Ставим игрока куда-нибудь на землю (посмотрите в Tiled, где у вас земля!)
+        self.player.center_x = 70 # Примерные координаты
+        self.player.center_y = 980# Примерные координаты
+        self.player_list.append(self.player)
+
+        # --- Физический движок ---
+        # Используем PhysicsEngineSimple, который знаем и любим
+        
+        # Он даст нам движение и коллизии со стенами (self.wall_list)!
+        self.physics_engine = arcade.PhysicsEngineSimple(
+            self.player, self.collision_list,
+        )
+        self.physics_engine2 = arcade.PhysicsEngineSimple(
+            self.player, self.destroy_list,
+        )
+    
     def on_draw(self):
         self.clear()
+        self.Background_list.draw() 
+        self.Indestructible_list.draw()
+        self.destructible_list.draw()
         self.player_list.draw()
-        self.box.wall_list.draw()
+        
     def on_update(self, delta_time):
         self.player_list.update(delta_time, self.keys_pressed)
         self.player.update_animation()
+        if self.physics_engine:
+            self.physics_engine.update()
+        if self.physics_engine2:
+            self.physics_engine2.update()
     def on_key_press(self, key, modifiers):
         self.keys_pressed.add(key)
 
