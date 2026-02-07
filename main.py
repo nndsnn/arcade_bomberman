@@ -3,91 +3,179 @@ import math
 import time
 import random
 import os
-
+from player2 import Player2
+from paus import PauseButton
 # Задаём размер окна
 SCREEN_WIDTH = 1900
 SCREEN_HEIGHT = 1050
-RESIZABLE = True
 SCREEN_TITLE = "Bomber"
 
-class PowerUp(arcade.Sprite):
-    """Класс усиления, которое выпадает из блоков"""
+# Список доступных карт
+AVAILABLE_MAPS = [
+    "ggg.tmx",        # Карта 1
+    "map2.tmx",       # Карта 2
+    "map3.tmx",       # Карта 3
+]
 
-    # Типы усилений
-    TYPE_BOMB_COUNT = "bomb_count"    # +1 бомба
-    TYPE_EXPLOSION_RADIUS = "radius"  # +1 радиус взрыва
-    TYPE_SPEED_BOOST = "speed"        # +20% скорости
+class SpeedParticle(arcade.Sprite):
+    """Частичка для улучшения скорости"""
 
-    def __init__(self, x, y, power_type):
-        # Определяем текстуру в зависимости от типа
-        texture_path = ""
-        if power_type == self.TYPE_BOMB_COUNT:
-            texture_path = "assets/PowerUps/bomb_up.png"
-        elif power_type == self.TYPE_EXPLOSION_RADIUS:
-            texture_path = "assets/PowerUps/fire_up.png"
-        elif power_type == self.TYPE_SPEED_BOOST:
-            texture_path = "assets/PowerUps/speed_up.png"
+    def __init__(self, x, y):
+        super().__init__(center_x=x, center_y=y)
 
-        # Если текстуры нет, используем placeholder
         try:
-            if os.path.exists(texture_path):
-                super().__init__(texture_path, scale=0.6)
-            else:
-                raise FileNotFoundError(f"Файл {texture_path} не найден")
+            self.texture = arcade.load_texture("Power_UP/capogipng.png")
         except:
-            # Создаем цветной квадрат как placeholder
-            super().__init__(center_x=x, center_y=y)
-            if power_type == self.TYPE_BOMB_COUNT:
-                color = arcade.color.BLUE
-            elif power_type == self.TYPE_EXPLOSION_RADIUS:
-                color = arcade.color.RED
-            else:
-                color = arcade.color.GREEN
-            self.texture = arcade.make_soft_square_texture(40, color, center_alpha=255)
-            self.scale = 1.0
+            self.texture = arcade.make_soft_circle_texture(15, arcade.color.BLUE, center_alpha=255)
 
-        self.center_x = x
-        self.center_y = y
-        self.power_type = power_type
+        self.scale = 0.1
+        self.alpha = 255
+        self.color = arcade.color.BLUE
+        self.value = 1
 
-        # Анимация парения
         self.float_timer = 0
-        self.float_speed = 1.0
+        self.float_speed = 1.5
         self.spawn_time = time.time()
+        self.lifetime = 7.0
 
     def update(self, delta_time: float = 1/60):
-        """Анимация парения усиления"""
         self.float_timer += delta_time * self.float_speed
-        # Плавное движение вверх-вниз
-        self.center_y += math.sin(self.float_timer) * 0.1
+        self.center_y += math.sin(self.float_timer) * 0.2
+
+        current_time = time.time()
+        time_since_spawn = current_time - self.spawn_time
+
+        if time_since_spawn > self.lifetime - 2.0:
+            self.alpha = int(255 * (0.5 + 0.5 * math.sin(time_since_spawn * 10)))
+        elif time_since_spawn >= self.lifetime:
+            self.remove_from_sprite_lists()
+
+class BombParticle(arcade.Sprite):
+    """Частичка для улучшения бомб"""
+
+    def __init__(self, x, y):
+        super().__init__(center_x=x, center_y=y)
+
+        try:
+            self.texture = arcade.load_texture("Power_UP/bomb_power.png")
+        except:
+            self.texture = arcade.make_soft_circle_texture(15, arcade.color.RED, center_alpha=255)
+
+        self.scale = 0.6
+        self.alpha = 255
+        self.color = arcade.color.RED
+        self.value = 1
+
+        self.float_timer = 0
+        self.float_speed = 1.5
+        self.spawn_time = time.time()
+        self.lifetime = 7.0
+
+    def update(self, delta_time: float = 1/60):
+        self.float_timer += delta_time * self.float_speed
+        self.center_y += math.sin(self.float_timer) * 0.2
+
+        current_time = time.time()
+        time_since_spawn = current_time - self.spawn_time
+
+        if time_since_spawn > self.lifetime - 2.0:
+            self.alpha = int(255 * (0.5 + 0.5 * math.sin(time_since_spawn * 10)))
+        elif time_since_spawn >= self.lifetime:
+            self.remove_from_sprite_lists()
+
+class Shield(arcade.Sprite):
+    """Щит, защищающий от одного удара"""
+
+    def __init__(self, x, y):
+        super().__init__(center_x=x, center_y=y)
+
+        try:
+            self.texture = arcade.load_texture("Power_UP/hiled.png")
+        except:
+            self.texture = arcade.make_soft_circle_texture(60, arcade.color.BLUE, center_alpha=100)
+
+        self.scale = 0.2
+        self.spawn_time = time.time()
+        self.lifetime = 15.0
+
+        self.rotation_timer = 0
+
+    def update(self, delta_time: float = 1/60):
+        self.rotation_timer += delta_time
+        self.angle = math.sin(self.rotation_timer * 2) * 10
+
+        current_time = time.time()
+        if current_time - self.spawn_time >= self.lifetime:
+            self.remove_from_sprite_lists()
+
+class Star(arcade.Sprite):
+    """Звезда, убивающая противников при прикосновении"""
+
+    def __init__(self, x, y):
+        super().__init__(center_x=x, center_y=y)
+
+        try:
+            self.texture = arcade.load_texture("Power_UP/star.png")
+        except:
+            self.texture = arcade.make_soft_circle_texture(50, arcade.color.ORANGE, center_alpha=255)
+
+        self.scale = 1.0
+        self.spawn_time = time.time()
+        self.lifetime = 10.0
+
+        self.pulse_timer = 0
+
+    def update(self, delta_time: float = 1/60):
+        self.pulse_timer += delta_time
+        pulse = 1.0 + 0.2 * math.sin(self.pulse_timer * 5)
+        self.scale = pulse
+
+        current_time = time.time()
+        if current_time - self.spawn_time >= self.lifetime:
+            self.remove_from_sprite_lists()
+
+class Coin(arcade.Sprite):
+    """Монетка"""
+
+    def __init__(self, x, y):
+        super().__init__(center_x=x, center_y=y)
+
+        try:
+            self.texture = arcade.load_texture("Power_UP/coinGold.png")
+        except:
+            self.texture = arcade.make_soft_circle_texture(20, arcade.color.YELLOW, center_alpha=255)
+
+        self.scale = 1.0
+        self.spawn_time = time.time()
+        self.lifetime = 10.0
+
+        self.rotation_timer = 0
+
+    def update(self, delta_time: float = 1/60):
+        self.rotation_timer += delta_time
+        self.angle = self.rotation_timer * 100
+
+        current_time = time.time()
+        if current_time - self.spawn_time >= self.lifetime:
+            self.remove_from_sprite_lists()
 
 class Bomb(arcade.Sprite):
-    def __init__(self, x, y, explosion_time=2.0):
+    def __init__(self, x, y, explosion_time=2.0, owner=None):
         super().__init__()
 
-        # Пробуем загрузить текстуры бомбы
         try:
-            # Проверяем существование файлов
-            if os.path.exists("assets/Bomb/bomb.png"):
-                self.bomb_texture = arcade.load_texture("assets/Bomb/bomb.png")
-                if os.path.exists("assets/Bomb/bomb1.png"):
-                    self.bomb_texture2 = arcade.load_texture("assets/Bomb/bomb1.png")
-                    self.has_two_textures = True
-                else:
-                    self.has_two_textures = False
-                self.texture = self.bomb_texture
-                self.scale = 0.8
-            else:
-                raise FileNotFoundError("Файлы бомбы не найдены")
-        except Exception as e:
-            # Создаем текстуру круга вручную
+            self.bomb_texture = arcade.load_texture("assets/Bomb/bomb.png")
+            self.bomb_texture2 = arcade.load_texture("assets/Bomb/bomb1.png")
+            self.has_two_textures = True
+            self.texture = self.bomb_texture
+            self.scale = 0.8
+        except:
             SIZE = 50
             image = arcade.create_image(SIZE, SIZE, color=(0, 0, 0, 0))
             with image.ctx:
                 arcade.draw_circle_filled(SIZE//2, SIZE//2, SIZE//2 - 2, arcade.color.BLACK)
                 arcade.draw_circle_filled(SIZE//2, SIZE//2, SIZE//2 - 5, arcade.color.DARK_GRAY)
                 arcade.draw_circle_filled(SIZE//2, SIZE//2, SIZE//2 - 10, arcade.color.RED)
-
             self.texture = image.texture
             self.has_two_textures = False
             self.scale = 1.0
@@ -97,29 +185,22 @@ class Bomb(arcade.Sprite):
         self.explosion_time = explosion_time
         self.placed_time = time.time()
         self.has_exploded = False
-
-        # Параметры мигания
         self.blink_interval = 0.3
         self.blink_timer = 0
+        self.owner = owner  # Кто поставил бомбу
 
     def update(self, delta_time: float = 1/60):
-        """Обновление состояния бомбы с миганием"""
         current_time = time.time()
         time_since_placed = current_time - self.placed_time
 
-        # Проверка взрыва
         if not self.has_exploded and time_since_placed >= self.explosion_time:
             self.has_exploded = True
             return
 
-        # Мигаем только если есть обе текстуры
         if self.has_two_textures:
             self.blink_timer += delta_time
-
             if self.blink_timer >= self.blink_interval:
                 self.blink_timer = 0
-
-                # Меняем текстуру на противоположную
                 if self.texture == self.bomb_texture:
                     self.texture = self.bomb_texture2
                 else:
@@ -127,49 +208,51 @@ class Bomb(arcade.Sprite):
 
 class Hero(arcade.Sprite):
     def __init__(self, game):
-        # Пробуем загрузить текстуру героя
         try:
-            if os.path.exists("assets/Plaer1_purple/idle.png"):
-                super().__init__("assets/Plaer1_purple/idle.png", scale=0.5)
-            else:
-                raise FileNotFoundError("Текстура героя не найдена")
+            super().__init__("assets/Plaer1_purple/idle.png", scale=0.5)
         except:
-            # Создаем простую текстуру
             super().__init__(center_x=SCREEN_WIDTH//2, center_y=SCREEN_HEIGHT//2)
             self.texture = arcade.make_soft_square_texture(50, arcade.color.PURPLE, center_alpha=255)
 
         self.game = game
-
-        # Базовые характеристики
-        self.hero_speed = 200
+        self.hero_speed = 200  # БАЗОВАЯ СКОРОСТЬ (Одинаковая для всех)
         self.health = 100
-        self.bomb_limit = 1  # Начальный лимит бомб
-        self.active_bombs = 0  # Количество активных бомб
+        self.bomb_limit = 1
+        self.active_bombs = 0
         self.last_bomb_time = 0
-        self.bomb_cooldown = 0.5  # Кулдаун между бомбами
+        self.bomb_cooldown = 1.0  # ОДИН РАЗ В СЕКУНДУ
 
-        # Текущие усиления (НАЧАЛЬНЫЕ ЗНАЧЕНИЯ)
-        self.explosion_radius = 1
+        self.speed_particles = 0
+        self.speed_particles_needed = 5
+
+        self.bomb_particles = 0
+        self.bomb_particles_needed = 8
+
+        self.coins = 0
+
+        self.has_shield = False
+        self.has_star = False
+        self.shield_end_time = 0
+        self.star_end_time = 0
+
+        self.speed_level = 1
         self.speed_multiplier = 1.0
 
-        self.is_alive = True
+        self.bomb_level = 1
+        self.explosion_radius = 1
 
+        self.is_alive = True
         self.center_x = SCREEN_WIDTH // 2
         self.center_y = SCREEN_HEIGHT // 2
 
-        # Загрузка текстур для анимации
         try:
             self.idle_texture = arcade.load_texture("assets/Plaer1_purple/idle.png")
             self.texture = self.idle_texture
-
             self.walk_textures = []
             for i in range(1, 5):
-                texture_path = f"assets/Plaer1_purple/walk{i}.png"
-                if os.path.exists(texture_path):
-                    texture = arcade.load_texture(texture_path)
-                    self.walk_textures.append(texture)
+                texture = arcade.load_texture(f"assets/Plaer1_purple/walk{i}.png")
+                self.walk_textures.append(texture)
         except:
-            # Если текстуры не загрузились, используем простые цвета
             self.walk_textures = []
             self.idle_texture = arcade.make_soft_square_texture(50, arcade.color.PURPLE, center_alpha=255)
             self.texture = self.idle_texture
@@ -193,12 +276,17 @@ class Hero(arcade.Sprite):
                 self.texture = self.idle_texture
 
     def get_effective_speed(self):
-        """Возвращает скорость с учетом усилений"""
         return self.hero_speed * self.speed_multiplier
 
     def update(self, delta_time, keys_pressed):
         if not self.is_alive:
             return
+
+        if self.has_shield and time.time() > self.shield_end_time:
+            self.has_shield = False
+
+        if self.has_star and time.time() > self.star_end_time:
+            self.has_star = False
 
         dx, dy = 0, 0
         effective_speed = self.get_effective_speed()
@@ -217,25 +305,46 @@ class Hero(arcade.Sprite):
             dx *= factor
             dy *= factor
 
+        old_x, old_y = self.center_x, self.center_y
+        
         self.center_x += dx
         self.center_y += dy
 
+        # Проверка столкновений
+        collision_happened = False
+        
+        if hasattr(self.game, 'collision_list'):
+            if arcade.check_for_collision_with_list(self, self.game.collision_list):
+                collision_happened = True
+        
+        if hasattr(self.game, 'destroy_list'):
+            if arcade.check_for_collision_with_list(self, self.game.destroy_list):
+                collision_happened = True
+        
+        if hasattr(self.game, 'Indestructible_list'):
+            if arcade.check_for_collision_with_list(self, self.game.Indestructible_list):
+                collision_happened = True
+        
+        if hasattr(self.game, 'destructible_list'):
+            if arcade.check_for_collision_with_list(self, self.game.destructible_list):
+                collision_happened = True
+
+        if collision_happened:
+            self.center_x, self.center_y = old_x, old_y
+
         margin_x = 30
         margin_y = 20
-
         self.center_x = max(margin_x, min(SCREEN_WIDTH - margin_x, self.center_x))
         self.center_y = max(margin_y, min(SCREEN_HEIGHT - margin_y, self.center_y))
         self.is_walking = dx != 0 or dy != 0
 
     def can_place_bomb(self):
-        """Проверяет, можно ли поставить бомбу"""
         if not self.is_alive:
             return False
 
         current_time = time.time()
         time_since_last_bomb = current_time - self.last_bomb_time
 
-        # Проверяем лимит бомб и кулдаун
         if self.active_bombs >= self.bomb_limit:
             return False
 
@@ -245,181 +354,191 @@ class Hero(arcade.Sprite):
         return True
 
     def place_bomb(self):
-        """Ставит бомбу в центре текущей клетки"""
         if not self.can_place_bomb():
             return None
 
         tile_size = self.game.tile_size
-
-        # Определяем клетку игрока
         cell_x = int(self.center_x // tile_size)
         cell_y = int(self.center_y // tile_size)
-
-        # Вычисляем центр этой клетки
         bomb_x = cell_x * tile_size + tile_size // 2
         bomb_y = cell_y * tile_size + tile_size // 2
 
-        # Проверяем, нет ли уже бомбы в этой клетке
         for existing_bomb in self.game.bomb_list:
             existing_cell_x = int(existing_bomb.center_x // tile_size)
             existing_cell_y = int(existing_bomb.center_y // tile_size)
             if cell_x == existing_cell_x and cell_y == existing_cell_y:
                 return None
 
-        bomb = Bomb(bomb_x, bomb_y, explosion_time=2.0)
+        bomb = Bomb(bomb_x, bomb_y, explosion_time=2.0, owner=self)
         self.game.bomb_list.append(bomb)
         self.active_bombs += 1
         self.last_bomb_time = time.time()
-
         return bomb
 
-    def apply_power_up(self, power_up):
-        """Применяет усиление к игроку ТОЛЬКО ОДИН РАЗ"""
-        print(f"🔧 Применяю усиление типа: {power_up.power_type}")
-        print(f"🔧 Текущий радиус ДО: {self.explosion_radius}")
+    def add_speed_particle(self):
+        self.speed_particles += 1
+        print(f"🔵 [Игрок 1] Частичка скорости: {self.speed_particles}/{self.speed_particles_needed}")
 
-        if power_up.power_type == PowerUp.TYPE_BOMB_COUNT:
-            self.bomb_limit += 1
-            print(f"✨ Усиление: +1 бомба (теперь лимит {self.bomb_limit})")
+        if self.speed_particles >= self.speed_particles_needed:
+            self.upgrade_speed()
 
-        elif power_up.power_type == PowerUp.TYPE_EXPLOSION_RADIUS:
-            # УВЕЛИЧИВАЕМ ТОЛЬКО НА 1
-            self.explosion_radius += 1
-            # Ограничиваем максимальный радиус
-            if self.explosion_radius > 5:
-                self.explosion_radius = 5
-            print(f"✨ Усиление: +1 радиус взрыва (теперь {self.explosion_radius})")
+    def upgrade_speed(self):
+        self.speed_particles = 0
+        self.speed_level += 1
 
-        elif power_up.power_type == PowerUp.TYPE_SPEED_BOOST:
-            self.speed_multiplier += 0.2
-            self.speed_multiplier = min(self.speed_multiplier, 2.0)
-            print(f"✨ Усиление: +20% скорости (теперь x{self.speed_multiplier:.1f})")
+        if self.speed_level == 2:
+            self.speed_multiplier = 1.2
+        elif self.speed_level == 3:
+            self.speed_multiplier = 1.4
+        elif self.speed_level == 4:
+            self.speed_multiplier = 1.6
+        elif self.speed_level == 5:
+            self.speed_multiplier = 1.8
+        else:
+            self.speed_multiplier = 2.0
 
-        print(f"🔧 Текущий радиус ПОСЛЕ: {self.explosion_radius}")
+        self.speed_particles_needed = min(20, self.speed_particles_needed + 3)
+        print(f"🚀 [Игрок 1] Улучшена скорость! Уровень {self.speed_level}, множитель: {self.speed_multiplier:.1f}")
+
+    def add_bomb_particle(self):
+        self.bomb_particles += 1
+        print(f"🔴 [Игрок 1] Частичка бомбы: {self.bomb_particles}/{self.bomb_particles_needed}")
+
+        if self.bomb_particles >= self.bomb_particles_needed:
+            self.upgrade_bombs()
+
+    def upgrade_bombs(self):
+        self.bomb_particles = 0
+        self.bomb_level += 1
+        self.bomb_limit += 1
+        self.bomb_particles_needed = min(15, self.bomb_particles_needed + 2)
+        print(f"💣 [Игрок 1] Улучшены бомбы! Теперь можно ставить {self.bomb_limit} бомб")
+
+    def add_coin(self, amount=1):
+        self.coins += amount
+        print(f"💰 [Игрок 1] Монеты: {self.coins}")
+
+    def give_shield(self):
+        self.has_shield = True
+        self.shield_end_time = time.time() + 10
+        print(f"🛡️ [Игрок 1] Получен щит! Защита от следующего удара")
+
+    def give_star(self):
+        self.has_star = True
+        self.star_end_time = time.time() + 8
+        print(f"⭐ [Игрок 1] Получена звезда! Следующее прикосновение убивает противника")
 
     def take_damage(self, damage):
-        """Получение урона"""
         if not self.is_alive:
+            return
+
+        if self.has_shield:
+            self.has_shield = False
+            print("🛡️ [Игрок 1] Щит поглотил урон!")
             return
 
         self.health -= damage
         if self.health <= 0:
             self.health = 0
             self.is_alive = False
-            print("💀 Игрок погиб!")
+            print("💀 [Игрок 1] Игрок погиб!")
 
 class MyGame(arcade.Window):
     def __init__(self, width, height, title, resizable=False):
         super().__init__(width, height, title, resizable)
-        arcade.set_background_color(arcade.color.ASH_GREY)
-        self.keys_pressed = set()
 
+        self.in_menu = True
+        self.game_paused = False 
+        self.hover_button = 0  # Добавляем переменную для подсветки
+        self.keys_pressed = set()
         self.explosion_time = 0
         self.show_explosion = False
         self.explosion_x = 0
         self.explosion_y = 0
         self.tile_size = 70
-
         self.death_time = 0
         self.restart_cooldown = 3.0
 
-        # Вероятность выпадения усиления (30%)
-        self.power_up_chance = 0.3
+        self.particle_chance = 0.3
+        self.shield_chance = 0.1
+        self.star_chance = 0.1
+        self.coin_chance = 0.5
+        self.pause_button = PauseButton(x=40, y=SCREEN_HEIGHT - 10)
+    def setup(self, map_index):
+        """Загружаем карту по индексу - без проверок!"""
+        map_file = AVAILABLE_MAPS[map_index]  # Просто берем карту по индексу
+        print(f"🎮 Загружаю карту: {map_file}")
 
-        # Время жизни усилений (10 секунд)
-        self.power_up_lifetime = 10.0
-
-    def setup(self):
         self.player_list = arcade.SpriteList()
         self.bomb_list = arcade.SpriteList()
-        self.power_up_list = arcade.SpriteList()
-
+        self.speed_particles = arcade.SpriteList()
+        self.bomb_particles = arcade.SpriteList()
+        self.shield_list = arcade.SpriteList()
+        self.star_list = arcade.SpriteList()
+        self.coin_list = arcade.SpriteList()
+        self.pause_button.is_paused = False
         try:
-            map_name = "gg.tmx"
-            if os.path.exists(map_name):
-                TILE_SCALING = 1.0
-                tile_map = arcade.load_tilemap(map_name, scaling=TILE_SCALING)
+            TILE_SCALING = 1
+            tile_map = arcade.load_tilemap(map_file, scaling=TILE_SCALING)
 
-                self.Indestructible_list = tile_map.sprite_lists.get("Indestructible", arcade.SpriteList())
-                self.destructible_list = tile_map.sprite_lists.get("destructible", arcade.SpriteList())
-                self.Background_list = tile_map.sprite_lists.get("Background", arcade.SpriteList())
-                self.collision_list = tile_map.sprite_lists.get("Colision", arcade.SpriteList())
-                self.destroy_list = tile_map.sprite_lists.get("Destroy", arcade.SpriteList())
-            else:
-                print("Карта не найдена, создаю пустые списки")
-                self.create_empty_lists()
-        except Exception as e:
-            print(f"Ошибка загрузки карты: {e}")
+            self.Indestructible_list = tile_map.sprite_lists.get("Indestructible", arcade.SpriteList())
+            self.destructible_list = tile_map.sprite_lists.get("destructible", arcade.SpriteList())
+            self.Background_list = tile_map.sprite_lists.get("Background", arcade.SpriteList())
+            self.collision_list = tile_map.sprite_lists.get("Colision", arcade.SpriteList())
+            self.destroy_list = tile_map.sprite_lists.get("Destroy", arcade.SpriteList())
+        except:
+            print(f"❌ Ошибка загрузки карты {map_file}")
             self.create_empty_lists()
 
         self.player = Hero(self)
-        self.player.center_x = 70
-        self.player.center_y = 980
+        self.player.center_x = 95
+        self.player.center_y = 960
         self.player_list.append(self.player)
-
-        self.create_physics_engines()
-
+        
+        self.player2 = Player2(self)
+        self.player2.center_x = 1225  # Правая сторона
+        self.player2.center_y = 110
+        self.player_list.append(self.player2)
+        self.sound = arcade.load_sound("music/Track-3-Boomberman.wav")
+        arcade.play_sound(self.sound,volume=0.3)
     def create_empty_lists(self):
-        """Создает пустые списки если карта не загрузилась"""
         self.Indestructible_list = arcade.SpriteList()
         self.destructible_list = arcade.SpriteList()
         self.Background_list = arcade.SpriteList()
         self.collision_list = arcade.SpriteList()
         self.destroy_list = arcade.SpriteList()
 
-    def create_physics_engines(self):
-        self.physics_engine = arcade.PhysicsEngineSimple(
-            self.player, self.collision_list,
-        )
-
-        self.physics_engine2 = arcade.PhysicsEngineSimple(
-            self.player, self.destroy_list,
-        )
-
-    def check_collision_in_cell(self, cell_x, cell_y):
-        """Проверяет, есть ли непроходимый блок в клетке"""
-        for sprite in self.collision_list:
-            sprite_cell_x = int(sprite.center_x // self.tile_size)
-            sprite_cell_y = int(sprite.center_y // self.tile_size)
-            if sprite_cell_x == cell_x and sprite_cell_y == cell_y:
-                return True
-        return False
-
-    def is_player_in_explosion_radius(self, bomb_x, bomb_y):
-        """Проверяет, находится ли игрок в радиусе взрыва С УЧЕТОМ ПРЕГРАД"""
-        if not self.player.is_alive:
+    def is_player_in_explosion_radius(self, bomb_x, bomb_y, player, bomb_owner):
+        """Проверяет, находится ли игрок в радиусе взрыва"""
+        if not player.is_alive:
             return False
 
         tile_size = self.tile_size
         bomb_cell_x = int(bomb_x // tile_size)
         bomb_cell_y = int(bomb_y // tile_size)
 
-        player_cell_x = int(self.player.center_x // tile_size)
-        player_cell_y = int(self.player.center_y // tile_size)
+        player_cell_x = int(player.center_x // tile_size)
+        player_cell_y = int(player.center_y // tile_size)
 
-        # Получаем текущий радиус из усилений игрока
-        current_radius = self.player.explosion_radius
+        current_radius = bomb_owner.explosion_radius
 
-        # Проверяем, находится ли игрок на одной линии с бомбой в пределах радиуса
         if player_cell_x == bomb_cell_x and abs(player_cell_y - bomb_cell_y) <= current_radius:
-            # Проверяем направление
-            if player_cell_y > bomb_cell_y:  # Игрок выше бомбы
+            if player_cell_y > bomb_cell_y:
                 for row in range(bomb_cell_y + 1, player_cell_y + 1):
                     if self.check_collision_in_cell(bomb_cell_x, row):
                         return False
-            else:  # Игрок ниже бомбы
+            else:
                 for row in range(player_cell_y, bomb_cell_y):
                     if self.check_collision_in_cell(bomb_cell_x, row):
                         return False
             return True
 
         elif player_cell_y == bomb_cell_y and abs(player_cell_x - bomb_cell_x) <= current_radius:
-            # Проверяем направление
-            if player_cell_x > bomb_cell_x:  # Игрок справа от бомбы
+            if player_cell_x > bomb_cell_x:
                 for col in range(bomb_cell_x + 1, player_cell_x + 1):
                     if self.check_collision_in_cell(col, bomb_cell_y):
                         return False
-            else:  # Игрок слева от бомбы
+            else:
                 for col in range(player_cell_x, bomb_cell_x):
                     if self.check_collision_in_cell(col, bomb_cell_y):
                         return False
@@ -427,8 +546,15 @@ class MyGame(arcade.Window):
 
         return False
 
+    def check_collision_in_cell(self, cell_x, cell_y):
+        for sprite in self.collision_list:
+            sprite_cell_x = int(sprite.center_x // self.tile_size)
+            sprite_cell_y = int(sprite.center_y // self.tile_size)
+            if sprite_cell_x == cell_x and sprite_cell_y == cell_y:
+                return True
+        return False
+
     def get_blocks_in_cell(self, cell_x, cell_y, sprite_list):
-        """Возвращает все блоки в указанной клетке"""
         blocks = []
         for sprite in sprite_list:
             sprite_cell_x = int(sprite.center_x // self.tile_size)
@@ -437,250 +563,662 @@ class MyGame(arcade.Window):
                 blocks.append(sprite)
         return blocks
 
-    def spawn_power_up(self, x, y):
-        """Создает усиление в указанной позиции ТОЛЬКО ОДИН РАЗ"""
-        # Случайно решаем, выпадет ли усиление
-        if random.random() <= self.power_up_chance:
-            # Выбираем случайный тип усиления
-            power_types = [
-                PowerUp.TYPE_BOMB_COUNT,
-                PowerUp.TYPE_EXPLOSION_RADIUS,
-                PowerUp.TYPE_SPEED_BOOST
-            ]
-            power_type = random.choice(power_types)
+    def spawn_loot(self, x, y):
+        tile_size = self.tile_size
+        cell_x = int(x // tile_size)
+        cell_y = int(y // tile_size)
 
-            # Создаем усиление
-            power_up = PowerUp(x, y, power_type)
-            power_up.spawn_time = time.time()
+        if hasattr(self, 'loot_cells'):
+            if (cell_x, cell_y) in self.loot_cells:
+                return
+        else:
+            self.loot_cells = set()
 
-            # Добавляем в список
-            self.power_up_list.append(power_up)
+        self.loot_cells.add((cell_x, cell_y))
+        loot_x = cell_x * tile_size + tile_size // 2
+        loot_y = cell_y * tile_size + tile_size // 2
 
-            print(f"🎁 Выпало усиление: {power_type}")
-            return power_up
+        rand = random.random()
 
-        return None
+        if rand < self.coin_chance:
+            coin = Coin(loot_x, loot_y)
+            self.coin_list.append(coin)
+            print("💰 Выпала монетка!")
 
-    def check_power_up_collision(self):
-        """Проверяет столкновение игрока с усилениями ТОЛЬКО ОДИН РАЗ"""
-        power_up_hit_list = arcade.check_for_collision_with_list(
-            self.player, self.power_up_list
+        elif rand < self.coin_chance + self.particle_chance:
+            if random.random() < 0.5:
+                particle = SpeedParticle(loot_x, loot_y)
+                self.speed_particles.append(particle)
+                print("🔵 Выпала частичка скорости!")
+            else:
+                particle = BombParticle(loot_x, loot_y)
+                self.bomb_particles.append(particle)
+                print("🔴 Выпала частичка бомбы!")
+
+        elif rand < self.coin_chance + self.particle_chance + self.shield_chance:
+            shield = Shield(loot_x, loot_y)
+            self.shield_list.append(shield)
+            print("🛡️ Выпал щит!")
+
+        else:
+            star = Star(loot_x, loot_y)
+            self.star_list.append(star)
+            print("⭐ Выпала звезда!")
+
+    def check_collisions(self):
+        # Проверки для первого игрока
+        speed_hit_list = arcade.check_for_collision_with_list(
+            self.player, self.speed_particles
         )
 
-        # Применяем каждое усиление только один раз
-        for power_up in power_up_hit_list:
-            # Проверяем, не было ли уже применено это усиление
-            if hasattr(power_up, 'applied') and power_up.applied:
-                continue
+        for particle in speed_hit_list:
+            self.player.add_speed_particle()
+            particle.remove_from_sprite_lists()
 
-            # Применяем усиление
-            self.player.apply_power_up(power_up)
+        bomb_hit_list = arcade.check_for_collision_with_list(
+            self.player, self.bomb_particles
+        )
 
-            # Помечаем как примененное
-            power_up.applied = True
+        for particle in bomb_hit_list:
+            self.player.add_bomb_particle()
+            particle.remove_from_sprite_lists()
 
-            # Удаляем усиление из игры
-            power_up.remove_from_sprite_lists()
+        coin_hit_list = arcade.check_for_collision_with_list(
+            self.player, self.coin_list
+        )
 
-            print(f"✅ Подобрано усиление: {power_up.power_type}")
+        for coin in coin_hit_list:
+            self.player.add_coin(random.randint(1, 3))
+            coin.remove_from_sprite_lists()
 
-    def update_power_ups(self):
-        """Обновляет усиления и удаляет старые"""
-        current_time = time.time()
-        power_ups_to_remove = []
+        shield_hit_list = arcade.check_for_collision_with_list(
+            self.player, self.shield_list
+        )
 
-        for power_up in self.power_up_list:
-            # Проверяем время жизни
-            if hasattr(power_up, 'spawn_time'):
-                if current_time - power_up.spawn_time > self.power_up_lifetime:
-                    power_ups_to_remove.append(power_up)
-                    continue
+        for shield in shield_hit_list:
+            self.player.give_shield()
+            shield.remove_from_sprite_lists()
 
-        # Удаляем просроченные усиления
-        for power_up in power_ups_to_remove:
-            power_up.remove_from_sprite_lists()
+        star_hit_list = arcade.check_for_collision_with_list(
+            self.player, self.star_list
+        )
 
-    def destroy_blocks_with_power_ups(self, bomb):
-        """Уничтожает блоки и создает усиления"""
+        for star in star_hit_list:
+            self.player.give_star()
+            star.remove_from_sprite_lists()
+
+        # Проверки для второго игрока (такие же)
+        speed_hit_list2 = arcade.check_for_collision_with_list(
+            self.player2, self.speed_particles
+        )
+
+        for particle in speed_hit_list2:
+            self.player2.add_speed_particle()
+            particle.remove_from_sprite_lists()
+
+        bomb_hit_list2 = arcade.check_for_collision_with_list(
+            self.player2, self.bomb_particles
+        )
+
+        for particle in bomb_hit_list2:
+            self.player2.add_bomb_particle()
+            particle.remove_from_sprite_lists()
+
+        coin_hit_list2 = arcade.check_for_collision_with_list(
+            self.player2, self.coin_list
+        )
+
+        for coin in coin_hit_list2:
+            self.player2.add_coin(random.randint(1, 3))
+            coin.remove_from_sprite_lists()
+
+        shield_hit_list2 = arcade.check_for_collision_with_list(
+            self.player2, self.shield_list
+        )
+
+        for shield in shield_hit_list2:
+            self.player2.give_shield()
+            shield.remove_from_sprite_lists()
+
+        star_hit_list2 = arcade.check_for_collision_with_list(
+            self.player2, self.star_list
+        )
+
+        for star in star_hit_list2:
+            self.player2.give_star()
+            star.remove_from_sprite_lists()
+        self.check_star_kills()
+
+    def check_star_kills(self):
+        """Звезда убивает противника при касании"""
+        # Проверяем столкновение игроков
+        if arcade.check_for_collision(self.player, self.player2):
+            # Игрок 1 имеет звезду
+            if self.player.has_star and self.player2.is_alive:
+                if not self.player2.has_shield:  # Щит защищает
+                    print("⭐ Игрок 1 убивает звездой игрока 2!")
+                    self.player2.take_damage(100)
+                else:
+                    print("🛡️ Щит игрока 2 защитил от звезды!")
+                    self.player2.has_shield = False
+                self.player.has_star = False  # Звезда исчезает
+            
+            # Игрок 2 имеет звезду
+            elif self.player2.has_star and self.player.is_alive:
+                if not self.player.has_shield:
+                    print("⭐ Игрок 2 убивает звездой игрока 1!")
+                    self.player.take_damage(100)
+                else:
+                    print("🛡️ Щит игрока 1 защитил от звезды!")
+                    self.player.has_shield = False
+                self.player2.has_star = False
+        
+    def destroy_blocks(self, bomb):
         tile_size = self.tile_size
         bomb_cell_x = int(bomb.center_x // tile_size)
         bomb_cell_y = int(bomb.center_y // tile_size)
 
-        # Получаем текущий радиус из усилений игрока
-        current_radius = self.player.explosion_radius
+        current_radius = bomb.owner.explosion_radius
 
-        # Направления взрыва
-        directions = [(0, 0)]  # Центр
-
-        # Добавляем направления для текущего радиуса
-        for r in range(1, current_radius + 1):
-            directions.append((0, r))    # вверх
-            directions.append((0, -r))   # вниз
-            directions.append((-r, 0))   # влево
-            directions.append((r, 0))    # вправо
+        directions = [
+            (0, 0),
+            (0, 1),
+            (0, -1),
+            (-1, 0),
+            (1, 0)
+        ]
 
         destroyed_blocks = False
+        destroyed_cells = []
 
         for dx, dy in directions:
             check_x = bomb_cell_x + dx
             check_y = bomb_cell_y + dy
 
-            # Проверяем, не блокирует ли путь непроходимый блок
-            if dx != 0 or dy != 0:
-                blocked = False
-                if dx != 0:  # горизонтальное направление
-                    step = 1 if dx > 0 else -1
-                    for i in range(1, abs(dx) + 1):
-                        check_cell_x = bomb_cell_x + step * i
-                        if self.check_collision_in_cell(check_cell_x, bomb_cell_y):
-                            blocked = True
-                            break
-                elif dy != 0:  # вертикальное направление
-                    step = 1 if dy > 0 else -1
-                    for i in range(1, abs(dy) + 1):
-                        check_cell_y = bomb_cell_y + step * i
-                        if self.check_collision_in_cell(bomb_cell_x, check_cell_y):
-                            blocked = True
-                            break
+            blocked = False
+            if dx != 0:
+                step = 1 if dx > 0 else -1
+                for i in range(1, abs(dx) + 1):
+                    check_cell_x = bomb_cell_x + step * i
+                    if self.check_collision_in_cell(check_cell_x, bomb_cell_y):
+                        blocked = True
+                        break
+            elif dy != 0:
+                step = 1 if dy > 0 else -1
+                for i in range(1, abs(dy) + 1):
+                    check_cell_y = bomb_cell_y + step * i
+                    if self.check_collision_in_cell(bomb_cell_x, check_cell_y):
+                        blocked = True
+                        break
 
-                if blocked:
-                    continue  # Пропускаем это направление
+            if blocked:
+                continue
 
-            # Координаты центра клетки
-            power_up_x = check_x * tile_size + tile_size // 2
-            power_up_y = check_y * tile_size + tile_size // 2
-
-            # Уничтожаем destructible блоки в этой клетке
             blocks_in_cell = self.get_blocks_in_cell(check_x, check_y, self.destructible_list)
-            for block in blocks_in_cell:
-                # Спавним усиление только если есть блоки для уничтожения
-                self.spawn_power_up(power_up_x, power_up_y)
-                block.remove_from_sprite_lists()
-                destroyed_blocks = True
+            if blocks_in_cell:
+                destroyed_cells.append((check_x, check_y))
+                for block in blocks_in_cell:
+                    block.remove_from_sprite_lists()
+                    destroyed_blocks = True
 
-            # Уничтожаем Destroy блоки в этой клетке
             blocks_in_cell = self.get_blocks_in_cell(check_x, check_y, self.destroy_list)
-            for block in blocks_in_cell:
-                # Спавним усиление только если есть блоки для уничтожения
-                self.spawn_power_up(power_up_x, power_up_y)
-                block.remove_from_sprite_lists()
-                destroyed_blocks = True
+            if blocks_in_cell:
+                if (check_x, check_y) not in destroyed_cells:
+                    destroyed_cells.append((check_x, check_y))
+                for block in blocks_in_cell:
+                    block.remove_from_sprite_lists()
+                    destroyed_blocks = True
+
+        for cell_x, cell_y in destroyed_cells:
+            center_x = cell_x * tile_size + tile_size // 2
+            center_y = cell_y * tile_size + tile_size // 2
+            self.spawn_loot(center_x, center_y)
 
         return destroyed_blocks
 
-    def on_draw(self):
+    def draw_menu(self):
         self.clear()
+        arcade.draw_lrbt_rectangle_filled(0, SCREEN_WIDTH, 0, SCREEN_HEIGHT, arcade.color.DARK_SLATE_GRAY)
 
+        arcade.draw_text("BOMBER GAME", SCREEN_WIDTH // 2, SCREEN_HEIGHT - 150,
+                        arcade.color.YELLOW, 60, anchor_x="center", bold=True)
+        arcade.draw_text("▼ ВЫБЕРИТЕ КАРТУ ▼", SCREEN_WIDTH // 2, SCREEN_HEIGHT - 350,
+                    arcade.color.LIGHT_CYAN, 36, anchor_x="center")
+
+
+        # Кнопка 1 - меняем цвет в зависимости от hover_button
+        if self.hover_button == 1:
+            color1 = arcade.color.LIGHT_CORNFLOWER_BLUE  # Светлый при наведении
+        else:
+            color1 = arcade.color.LIGHT_BLUE  # Обычный
+
+        left = 750  # SCREEN_WIDTH//2 - 200
+        right = 1150  # SCREEN_WIDTH//2 + 200
+        bottom = 485  # SCREEN_HEIGHT//2 - 40
+        top = 565  # SCREEN_HEIGHT//2 + 40
+
+        arcade.draw_lrbt_rectangle_filled(left, right, bottom, top, color1)
+        arcade.draw_lrbt_rectangle_outline(left, right, bottom, top, arcade.color.WHITE, 3)
+        arcade.draw_text("Карта 1", SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2,
+                        arcade.color.WHITE, 28, anchor_x="center", anchor_y="center")
+
+        # Кнопка 2
+        if self.hover_button == 2:
+            color2 = arcade.color.LIGHT_CORNFLOWER_BLUE
+        else:
+            color2 = arcade.color.LIGHT_BLUE
+
+        bottom2 = 385  # (SCREEN_HEIGHT//2 - 100) - 40
+        top2 = 465  # (SCREEN_HEIGHT//2 - 100) + 40
+
+        arcade.draw_lrbt_rectangle_filled(left, right, bottom2, top2, color2)
+        arcade.draw_lrbt_rectangle_outline(left, right, bottom2, top2, arcade.color.WHITE, 3)
+        arcade.draw_text("Карта 2", SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 100,
+                        arcade.color.WHITE, 28, anchor_x="center", anchor_y="center")
+
+        # Кнопка 3
+        if self.hover_button == 3:
+            color3 = arcade.color.LIGHT_CORNFLOWER_BLUE
+        else:
+            color3 = arcade.color.LIGHT_BLUE
+
+        bottom3 = 285  # (SCREEN_HEIGHT//2 - 200) - 40
+        top3 = 365  # (SCREEN_HEIGHT//2 - 200) + 40
+
+        arcade.draw_lrbt_rectangle_filled(left, right, bottom3, top3, color3)
+        arcade.draw_lrbt_rectangle_outline(left, right, bottom3, top3, arcade.color.WHITE, 3)
+        arcade.draw_text("Карта 3", SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 200,
+                        arcade.color.WHITE, 28, anchor_x="center", anchor_y="center")
+
+    def draw_game(self):
+        self.clear()
+        arcade.set_background_color(arcade.color.ASH_GREY)
         self.Background_list.draw()
         self.Indestructible_list.draw()
         self.destructible_list.draw()
         self.destroy_list.draw()
 
-        # Отрисовка усилений
-        self.power_up_list.draw()
-
-        # Отрисовка бомб
+        self.coin_list.draw()
+        self.speed_particles.draw()
+        self.bomb_particles.draw()
+        self.shield_list.draw()
+        self.star_list.draw()
         self.bomb_list.draw()
-
         self.player_list.draw()
+        self.pause_button.draw()
+        if self.player.has_shield:
+            arcade.draw_circle_outline(
+                self.player.center_x, self.player.center_y, 40,
+                arcade.color.BLUE, 3
+            )
+
+        if self.player.has_star:
+            arcade.draw_circle_outline(
+                self.player.center_x, self.player.center_y, 45,
+                arcade.color.ORANGE, 4
+            )
+
+        if self.player2.has_shield:
+            arcade.draw_circle_outline(
+                self.player2.center_x, self.player2.center_y, 40,
+                arcade.color.BLUE, 3
+            )
+
+        if self.player2.has_star:
+            arcade.draw_circle_outline(
+                self.player2.center_x, self.player2.center_y, 45,
+                arcade.color.ORANGE, 4
+            )
 
         if self.show_explosion:
             alpha = int(255 * (1 - self.explosion_time / 0.5))
-
             tile_size = self.tile_size
             bomb_col = int(self.explosion_x // tile_size)
             bomb_row = int(self.explosion_y // tile_size)
 
-            # Получаем текущий радиус из усилений игрока
-            current_radius = self.player.explosion_radius
-
-            # Создаем все направления для текущего радиуса
-            directions = []
-
-            # Центр
-            directions.append((0, 0))
-
-            # Горизонтальные и вертикальные направления
-            for r in range(1, current_radius + 1):
-                directions.append((0, r))    # вверх
-                directions.append((0, -r))   # вниз
-                directions.append((-r, 0))   # влево
-                directions.append((r, 0))    # вправо
-
+            directions = [(0,0), (0,1), (0,-1), (-1,0), (1,0)]
             for dx, dy in directions:
                 cell_x = bomb_col + dx
                 cell_y = bomb_row + dy
-
                 cell_left = cell_x * tile_size
                 cell_right = cell_left + tile_size
                 cell_bottom = cell_y * tile_size
                 cell_top = cell_bottom + tile_size
 
-                # Полупрозрачный прямоугольник для каждой пораженной клетки
                 arcade.draw_lrbt_rectangle_filled(
                     cell_left, cell_right, cell_bottom, cell_top,
                     (255, 0, 0, alpha // 3)
                 )
+        if self.game_paused == True:
+            
+            arcade.draw_lrbt_rectangle_filled(
+            0, SCREEN_WIDTH, 0, SCREEN_HEIGHT,
+            (0, 0, 0, 128)  # Черный с 50% прозрачностью
+            )
+        
+        # Большая надпись "ПАУЗА" по центру
+            arcade.draw_text(
+                "ПАУЗА",
+                SCREEN_WIDTH // 2,
+                SCREEN_HEIGHT // 2,
+                arcade.color.YELLOW,
+                80,  # Размер шрифта
+                anchor_x="center",
+                anchor_y="center",
+                bold=True
+            )
+    
+        
+        # ===== СТАТИСТИКА ИГРОКА 1 (ВЕРХНИЙ ПРАВЫЙ УГОЛ) =====
+        start_x = SCREEN_WIDTH - 250  # Отступ справа
+        start_y = SCREEN_HEIGHT - 50  # Начинаем сверху
+        
+        # Фон для статистики игрока 1
+        arcade.draw_lrbt_rectangle_filled(
+            start_x - 10, SCREEN_WIDTH - 10, start_y - 210, start_y + 30,
+            (50, 50, 50, 200)  # Темно-серый с прозрачностью
+        )
+        arcade.draw_lrbt_rectangle_outline(
+            start_x - 10, SCREEN_WIDTH - 10, start_y - 210, start_y + 30,
+            arcade.color.PURPLE, 2
+        )
+        
+        arcade.draw_text(
+            f"Игрок 1 (фиолетовый)",
+            start_x, start_y,
+            arcade.color.PURPLE, 20
+        )
+        
+        arcade.draw_text(
+            f"Бомбы: {self.player.active_bombs}/{self.player.bomb_limit}",
+            start_x, start_y - 30,
+            arcade.color.WHITE, 18
+        )
 
-        # Сообщение о смерти
-        if not self.player.is_alive:
-            arcade.draw_text("ВЫ УМЕРЛИ!",
-                           SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 50,
-                           arcade.color.RED, 50, anchor_x="center")
+        arcade.draw_text(
+            f"Скорость: x{self.player.speed_multiplier:.1f}",
+            start_x, start_y - 60,
+            arcade.color.WHITE, 18
+        )
 
-            # Таймер до рестарта
-            if self.death_time > 0:
-                time_left = max(0, self.restart_cooldown - (time.time() - self.death_time))
-                arcade.draw_text(f"Рестарт через: {time_left:.1f}с",
-                               SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 50,
-                               arcade.color.YELLOW, 30, anchor_x="center")
+        arcade.draw_text(
+            f"⚡: {self.player.speed_particles}/{self.player.speed_particles_needed}",
+            start_x, start_y - 90,
+            arcade.color.LIGHT_BLUE, 16
+        )
 
-        # Отображение характеристик игрока
-        arcade.draw_text(f"Бомбы: {self.player.active_bombs}/{self.player.bomb_limit}",
-                       SCREEN_WIDTH - 200, SCREEN_HEIGHT - 50,
-                       arcade.color.WHITE, 20)
-        arcade.draw_text(f"Радиус: {self.player.explosion_radius}",
-                       SCREEN_WIDTH - 200, SCREEN_HEIGHT - 80,
-                       arcade.color.WHITE, 20)
-        arcade.draw_text(f"Скорость: x{self.player.speed_multiplier:.1f}",
-                       SCREEN_WIDTH - 200, SCREEN_HEIGHT - 110,
-                       arcade.color.WHITE, 20)
+        arcade.draw_text(
+            f"💣: {self.player.bomb_particles}/{self.player.bomb_particles_needed}",
+            start_x, start_y - 115,
+            arcade.color.LIGHT_CORAL, 16
+        )
 
-        # Показываем клетку игрока
-        player_cell_x = int(self.player.center_x // self.tile_size)
-        player_cell_y = int(self.player.center_y // self.tile_size)
-        arcade.draw_text(f"Клетка: ({player_cell_x}, {player_cell_y})",
-                       SCREEN_WIDTH // 2 - 100, SCREEN_HEIGHT - 50,
-                       arcade.color.YELLOW, 20)
+        arcade.draw_text(
+            f"💰: {self.player.coins}",
+            start_x, start_y - 145,
+            arcade.color.GOLD, 18
+        )
 
-    def on_update(self, delta_time):
-        if not self.player.is_alive:
-            # Проверяем таймер рестарта
-            if self.death_time > 0 and time.time() - self.death_time >= self.restart_cooldown:
-                self.setup()
+        if self.player.has_shield:
+            shield_time = max(0, self.player.shield_end_time - time.time())
+            arcade.draw_text(
+                f"🛡️: {shield_time:.1f}с",
+                start_x, start_y - 175,
+                arcade.color.LIGHT_BLUE, 16
+            )
+
+        if self.player.has_star:
+            star_time = max(0, self.player.star_end_time - time.time())
+            arcade.draw_text(
+                f"⭐: {star_time:.1f}с",
+                start_x, start_y - 200,
+                arcade.color.YELLOW_ORANGE, 16
+            )
+
+        # ===== СТАТИСТИКА ИГРОКА 2 (ПРАВЫЙ НИЖНИЙ УГОЛ) =====
+        start_x2 = SCREEN_WIDTH - 250  # Отступ справа тот же
+        start_y2 = 200  # Начинаем снизу
+        
+        # Фон для статистики игрока 2
+        arcade.draw_lrbt_rectangle_filled(
+            start_x2 - 10, SCREEN_WIDTH - 10, start_y2 - 210, start_y2 + 30,
+            (50, 50, 50, 200)  # Темно-серый с прозрачностью
+        )
+        arcade.draw_lrbt_rectangle_outline(
+            start_x2 - 10, SCREEN_WIDTH - 10, start_y2 - 210, start_y2 + 30,
+            arcade.color.GREEN, 2
+        )
+        
+        arcade.draw_text(
+            f"Игрок 2 (зеленый)",
+            start_x2, start_y2,
+            arcade.color.GREEN, 20
+        )
+        
+        arcade.draw_text(
+            f"Бомбы: {self.player2.active_bombs}/{self.player2.bomb_limit}",
+            start_x2, start_y2 - 30,
+            arcade.color.WHITE, 18
+        )
+
+        arcade.draw_text(
+            f"Скорость: x{self.player2.speed_multiplier:.1f}",
+            start_x2, start_y2 - 60,
+            arcade.color.WHITE, 18
+        )
+
+        arcade.draw_text(
+            f"⚡: {self.player2.speed_particles}/{self.player2.speed_particles_needed}",
+            start_x2, start_y2 - 90,
+            arcade.color.LIGHT_BLUE, 16
+        )
+
+        arcade.draw_text(
+            f"💣: {self.player2.bomb_particles}/{self.player2.bomb_particles_needed}",
+            start_x2, start_y2 - 115,
+            arcade.color.LIGHT_CORAL, 16
+        )
+
+        arcade.draw_text(
+            f"💰: {self.player2.coins}",
+            start_x2, start_y2 - 145,
+            arcade.color.GOLD, 18
+        )
+
+        if self.player2.has_shield:
+            shield_time2 = max(0, self.player2.shield_end_time - time.time())
+            arcade.draw_text(
+                f"🛡️: {shield_time2:.1f}с",
+                start_x2, start_y2 - 175,
+                arcade.color.LIGHT_BLUE, 16
+            )
+
+        if self.player2.has_star:
+            star_time2 = max(0, self.player2.star_end_time - time.time())
+            arcade.draw_text(
+                f"⭐: {star_time2:.1f}с",
+                start_x2, start_y2 - 200,
+                arcade.color.YELLOW_ORANGE, 16
+            )
+
+        # Сообщение о конце игры в красивом прямоугольнике
+        if not self.player.is_alive or not self.player2.is_alive:
+            if not self.player.is_alive and not self.player2.is_alive:
+                winner_text = "НИЧЬЯ! Оба игрока погибли!"
+                rect_color = (100, 100, 100, 220)  # Серый
+                text_color = arcade.color.LIGHT_GRAY
+            elif not self.player.is_alive:
+                winner_text = "ПОБЕДИТЕЛЬ: Игрок 2 (зеленый)!"
+                rect_color = (0, 150, 0, 220)  # Зеленый
+                text_color = arcade.color.LIME_GREEN
+            else:
+                winner_text = "ПОБЕДИТЕЛЬ: Игрок 1 (фиолетовый)!"
+                rect_color = (150, 0, 150, 220)  # Фиолетовый
+                text_color = arcade.color.VIOLET
+            
+            # Прямоугольник для сообщения
+            rect_width = 1100
+            rect_height = 200
+            rect_x = SCREEN_WIDTH // 2 - rect_width // 2
+            rect_y = SCREEN_HEIGHT // 2 - rect_height // 2
+            
+            # Фон прямоугольника
+            arcade.draw_lrbt_rectangle_filled(
+                rect_x, rect_x + rect_width, rect_y, rect_y + rect_height,
+                rect_color
+            )
+            
+            # Обводка прямоугольника
+            arcade.draw_lrbt_rectangle_outline(
+                rect_x, rect_x + rect_width, rect_y, rect_y + rect_height,
+                arcade.color.WHITE, 4
+            )
+            
+            # Текст победителя
+            arcade.draw_text(
+                winner_text,
+                SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 30,
+                text_color, 50, anchor_x="center", bold=True
+            )
+            
+            # Инструкция для рестарта
+            arcade.draw_text(
+                "Нажмите R для рестарта",
+                SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 50,
+                arcade.color.YELLOW, 35, anchor_x="center"
+            )
+
+    def on_draw(self):
+        if self.in_menu:
+            self.draw_menu()
+        else:
+            self.draw_game()
+
+    def on_mouse_press(self, x, y, button, modifiers):
+        if self.in_menu and button == arcade.MOUSE_BUTTON_LEFT:
+            # Просто проверяем hover_button
+            if self.hover_button == 1:
+                self.in_menu = False
+                self.setup(0)
+                print("🎮 Запускаю карту 1")
+            elif self.hover_button == 2:
+                self.in_menu = False
+                self.setup(1)
+                print("🎮 Запускаю карту 2")
+            elif self.hover_button == 3:
+                self.in_menu = False
+                self.setup(2)
+                print("🎮 Запускаю карту 3")
+        if button == arcade.MOUSE_BUTTON_LEFT:
+            if self.pause_button.check_click(x, y):
+                self.game_paused = self.pause_button.is_paused
+                print(f"⏸️ Пауза: {self.game_paused}")
+    def on_mouse_motion(self, x, y, dx, dy):
+        if not self.in_menu:
             return
 
+        # Просто смотрим координаты мыши
+        if 750 <= x <= 1150:  # Все кнопки по ширине
+            if 485 <= y <= 565:  # Кнопка 1
+                self.hover_button = 1
+            elif 385 <= y <= 465:  # Кнопка 2
+                self.hover_button = 2
+            elif 285 <= y <= 365:  # Кнопка 3
+                self.hover_button = 3
+            else:
+                self.hover_button = 0
+        else:
+            self.hover_button = 0
+    def on_key_press(self, key, modifiers):
+        if self.in_menu:
+            # Можно переключать карты клавишами 1,2,3 даже в меню
+            if key == arcade.key.KEY_1:
+                self.in_menu = False
+                self.setup(0)
+                print("🎮 Запускаю карту 1")
+            elif key == arcade.key.KEY_2:
+                self.in_menu = False
+                self.setup(1)
+                print("🎮 Запускаю карту 2")
+            elif key == arcade.key.KEY_3:
+                self.in_menu = False
+                self.setup(2)
+                print("🎮 Запускаю карту 3")
+            elif key == arcade.key.ESCAPE:
+                arcade.close_window()
+
+        else:
+            if key == arcade.key.ESCAPE:
+                self.in_menu = True
+                print("📋 Возвращаюсь в меню")
+
+            elif key == arcade.key.SPACE and self.player.is_alive:
+                bomb = self.player.place_bomb()
+                if bomb:
+                    print(f"💣 [Игрок 1] Бомба поставлена!")
+            elif key == arcade.key.ENTER and self.player2.is_alive:
+                bomb = self.player2.place_bomb()
+                if bomb:
+                    print(f"💣 [Игрок 2] Бомба поставлена!")
+
+            elif key == arcade.key.R:
+                # Перезапускаем текущую карту
+                current_map = 0  # По умолчанию первую карту
+                self.setup(current_map)
+                print("🔄 Рестарт игры")
+
+            else:
+                self.keys_pressed.add(key)
+
+    def on_key_release(self, key, modifiers):
+        if key in self.keys_pressed:
+            self.keys_pressed.remove(key)
+
+    def on_update(self, delta_time):
+        if self.in_menu:
+            return
+        
+        if self.game_paused:
+            return
+        # Если один из игроков умер, только показываем сообщение
+        if not self.player.is_alive or not self.player2.is_alive:
+            if self.death_time == 0:
+                self.death_time = time.time()
+                # Определяем, кто умер
+                if not self.player.is_alive and not self.player2.is_alive:
+                    print("🎮 Оба игрока погибли! Игра окончена!")
+                elif not self.player.is_alive:
+                    print("🎮 Игрок 1 погиб! Игра окончена!")
+                else:
+                    print("🎮 Игрок 2 погиб! Игра окончена!")
+            
+            # Не делаем автоматический рестарт, только ждем нажатия R
+            # Игровой мир больше не обновляется после смерти
+            return
+
+        # Обычное обновление игры (только если оба игрока живы)
         self.player_list.update(delta_time, self.keys_pressed)
         self.player.update_animation(delta_time)
+        self.player2.update_animation(delta_time)
 
-        # Обновление бомб
         self.bomb_list.update(delta_time)
-
-        # Обновление усилений
-        self.power_up_list.update(delta_time)
-        self.update_power_ups()
-
-        # Проверка сбора усилений (ТОЛЬКО ОДИН РАЗ ЗА КАДР)
-        self.check_power_up_collision()
+        self.speed_particles.update(delta_time)
+        self.bomb_particles.update(delta_time)
+        self.coin_list.update(delta_time)
+        self.shield_list.update(delta_time)
+        self.star_list.update(delta_time)
+        
+        self.check_collisions()
 
         bombs_to_remove = []
-
-        # Считаем активные бомбы
-        active_bombs = 0
+        active_bombs1 = 0
+        active_bombs2 = 0
 
         for bomb in self.bomb_list:
-            if not bomb.has_exploded:
-                active_bombs += 1
+            if bomb.owner == self.player and not bomb.has_exploded:
+                active_bombs1 += 1
+            elif bomb.owner == self.player2 and not bomb.has_exploded:
+                active_bombs2 += 1
 
             if bomb.has_exploded:
                 self.show_explosion = True
@@ -688,25 +1226,20 @@ class MyGame(arcade.Window):
                 self.explosion_x = bomb.center_x
                 self.explosion_y = bomb.center_y
 
-                # Проверяем попадание по игроку
-                if self.is_player_in_explosion_radius(bomb.center_x, bomb.center_y):
-                    self.player.take_damage(100)
-                    if not self.player.is_alive:
-                        self.death_time = time.time()
+                # Проверяем урон для обоих игроков
+                if bomb.owner == self.player or bomb.owner == self.player2:
+                    if self.is_player_in_explosion_radius(bomb.center_x, bomb.center_y, self.player, bomb.owner):
+                        self.player.take_damage(100)
+                    
+                    if self.is_player_in_explosion_radius(bomb.center_x, bomb.center_y, self.player2, bomb.owner):
+                        self.player2.take_damage(100)
 
-                # Уничтожение блоков и создание усилений
-                destroyed = self.destroy_blocks_with_power_ups(bomb)
-
+                destroyed = self.destroy_blocks(bomb)
                 bombs_to_remove.append(bomb)
 
-                # Если уничтожили блоки, пересоздаем физические движки
-                if destroyed:
-                    self.create_physics_engines()
+        self.player.active_bombs = active_bombs1
+        self.player2.active_bombs = active_bombs2
 
-        # Обновляем счетчик активных бомб у игрока
-        self.player.active_bombs = active_bombs
-
-        # Удаляем взорвавшиеся бомбы
         for bomb in bombs_to_remove:
             bomb.remove_from_sprite_lists()
 
@@ -715,29 +1248,9 @@ class MyGame(arcade.Window):
             if self.explosion_time >= 0.5:
                 self.show_explosion = False
 
-        if self.physics_engine:
-            self.physics_engine.update()
-        if self.physics_engine2:
-            self.physics_engine2.update()
-
-    def on_key_press(self, key, modifiers):
-        self.keys_pressed.add(key)
-
-        if key == arcade.key.SPACE and self.player.is_alive:
-            bomb = self.player.place_bomb()
-            if bomb:
-                print(f"💣 Бомба поставлена! Активных бомб: {self.player.active_bombs}/{self.player.bomb_limit}")
-        elif key == arcade.key.R:  # Клавиша R для мгновенного рестарта
-            self.setup()
-
-    def on_key_release(self, key, modifiers):
-        if key in self.keys_pressed:
-            self.keys_pressed.remove(key)
-
 def main():
     game = MyGame(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
-    game.setup()
     arcade.run()
-
+    
 if __name__ == "__main__":
     main()
