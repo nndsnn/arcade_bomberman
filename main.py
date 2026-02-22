@@ -1,32 +1,28 @@
 import arcade
+from db import DB
 import math
 import time
 import random
-import os
 from player2 import Player2
 from paus import PauseButton
-# Задаём размер окна
+
 SCREEN_WIDTH = 1900
 SCREEN_HEIGHT = 1050
 SCREEN_TITLE = "Bomber"
 
-# Список доступных карт
 AVAILABLE_MAPS = [
-    "ggg.tmx",        # Карта 1
-    "map2.tmx",       # Карта 2
-    "map3.tmx",       # Карта 3
+    "map1.tmx",
+    "map2.tmx",
+    "map3.tmx",
 ]
 
+
 class SpeedParticle(arcade.Sprite):
-    """Частичка для улучшения скорости"""
 
     def __init__(self, x, y):
         super().__init__(center_x=x, center_y=y)
 
-        try:
-            self.texture = arcade.load_texture("Power_UP/capogipng.png")
-        except:
-            self.texture = arcade.make_soft_circle_texture(15, arcade.color.BLUE, center_alpha=255)
+        self.texture = arcade.load_texture("Power_UP/capogipng.png")
 
         self.scale = 0.1
         self.alpha = 255
@@ -46,20 +42,18 @@ class SpeedParticle(arcade.Sprite):
         time_since_spawn = current_time - self.spawn_time
 
         if time_since_spawn > self.lifetime - 2.0:
-            self.alpha = int(255 * (0.5 + 0.5 * math.sin(time_since_spawn * 10)))
+            self.alpha = int(
+                255 * (0.5 + 0.5 * math.sin(time_since_spawn * 10)))
         elif time_since_spawn >= self.lifetime:
             self.remove_from_sprite_lists()
 
+
 class BombParticle(arcade.Sprite):
-    """Частичка для улучшения бомб"""
 
     def __init__(self, x, y):
         super().__init__(center_x=x, center_y=y)
 
-        try:
-            self.texture = arcade.load_texture("Power_UP/bomb_power.png")
-        except:
-            self.texture = arcade.make_soft_circle_texture(15, arcade.color.RED, center_alpha=255)
+        self.texture = arcade.load_texture("Power_UP/bomb_power.png")
 
         self.scale = 0.6
         self.alpha = 255
@@ -79,20 +73,18 @@ class BombParticle(arcade.Sprite):
         time_since_spawn = current_time - self.spawn_time
 
         if time_since_spawn > self.lifetime - 2.0:
-            self.alpha = int(255 * (0.5 + 0.5 * math.sin(time_since_spawn * 10)))
+            self.alpha = int(
+                255 * (0.5 + 0.5 * math.sin(time_since_spawn * 10)))
         elif time_since_spawn >= self.lifetime:
             self.remove_from_sprite_lists()
 
+
 class Shield(arcade.Sprite):
-    """Щит, защищающий от одного удара"""
 
     def __init__(self, x, y):
         super().__init__(center_x=x, center_y=y)
 
-        try:
-            self.texture = arcade.load_texture("Power_UP/hiled.png")
-        except:
-            self.texture = arcade.make_soft_circle_texture(60, arcade.color.BLUE, center_alpha=100)
+        self.texture = arcade.load_texture("Power_UP/hiled.png")
 
         self.scale = 0.2
         self.spawn_time = time.time()
@@ -108,16 +100,13 @@ class Shield(arcade.Sprite):
         if current_time - self.spawn_time >= self.lifetime:
             self.remove_from_sprite_lists()
 
+
 class Star(arcade.Sprite):
-    """Звезда, убивающая противников при прикосновении"""
 
     def __init__(self, x, y):
         super().__init__(center_x=x, center_y=y)
 
-        try:
-            self.texture = arcade.load_texture("Power_UP/star.png")
-        except:
-            self.texture = arcade.make_soft_circle_texture(50, arcade.color.ORANGE, center_alpha=255)
+        self.texture = arcade.load_texture("Power_UP/star.png")
 
         self.scale = 1.0
         self.spawn_time = time.time()
@@ -134,16 +123,13 @@ class Star(arcade.Sprite):
         if current_time - self.spawn_time >= self.lifetime:
             self.remove_from_sprite_lists()
 
+
 class Coin(arcade.Sprite):
-    """Монетка"""
 
     def __init__(self, x, y):
         super().__init__(center_x=x, center_y=y)
 
-        try:
-            self.texture = arcade.load_texture("Power_UP/coinGold.png")
-        except:
-            self.texture = arcade.make_soft_circle_texture(20, arcade.color.YELLOW, center_alpha=255)
+        self.texture = arcade.load_texture("Power_UP/coinGold.png")
 
         self.scale = 1.0
         self.spawn_time = time.time()
@@ -159,26 +145,16 @@ class Coin(arcade.Sprite):
         if current_time - self.spawn_time >= self.lifetime:
             self.remove_from_sprite_lists()
 
+
 class Bomb(arcade.Sprite):
     def __init__(self, x, y, explosion_time=2.0, owner=None):
         super().__init__()
 
-        try:
-            self.bomb_texture = arcade.load_texture("assets/Bomb/bomb.png")
-            self.bomb_texture2 = arcade.load_texture("assets/Bomb/bomb1.png")
-            self.has_two_textures = True
-            self.texture = self.bomb_texture
-            self.scale = 0.8
-        except:
-            SIZE = 50
-            image = arcade.create_image(SIZE, SIZE, color=(0, 0, 0, 0))
-            with image.ctx:
-                arcade.draw_circle_filled(SIZE//2, SIZE//2, SIZE//2 - 2, arcade.color.BLACK)
-                arcade.draw_circle_filled(SIZE//2, SIZE//2, SIZE//2 - 5, arcade.color.DARK_GRAY)
-                arcade.draw_circle_filled(SIZE//2, SIZE//2, SIZE//2 - 10, arcade.color.RED)
-            self.texture = image.texture
-            self.has_two_textures = False
-            self.scale = 1.0
+        self.bomb_texture = arcade.load_texture("assets/Bomb/bomb.png")
+        self.bomb_texture2 = arcade.load_texture("assets/Bomb/bomb1.png")
+        self.has_two_textures = True
+        self.texture = self.bomb_texture
+        self.scale = 0.8
 
         self.center_x = x
         self.center_y = y
@@ -187,7 +163,7 @@ class Bomb(arcade.Sprite):
         self.has_exploded = False
         self.blink_interval = 0.3
         self.blink_timer = 0
-        self.owner = owner  # Кто поставил бомбу
+        self.owner = owner
 
     def update(self, delta_time: float = 1/60):
         current_time = time.time()
@@ -206,28 +182,21 @@ class Bomb(arcade.Sprite):
                 else:
                     self.texture = self.bomb_texture
 
+
 class Hero(arcade.Sprite):
     def __init__(self, game):
-        try:
-            super().__init__("assets/Plaer1_purple/idle.png", scale=0.5)
-        except:
-            super().__init__(center_x=SCREEN_WIDTH//2, center_y=SCREEN_HEIGHT//2)
-            self.texture = arcade.make_soft_square_texture(50, arcade.color.PURPLE, center_alpha=255)
+        super().__init__("assets/Plaer1_purple/idle.png", scale=0.5)
 
         self.game = game
-        self.hero_speed = 200  # БАЗОВАЯ СКОРОСТЬ (Одинаковая для всех)
+        self.hero_speed = 200
         self.health = 100
         self.bomb_limit = 1
         self.active_bombs = 0
         self.last_bomb_time = 0
-        self.bomb_cooldown = 1.0  # ОДИН РАЗ В СЕКУНДУ
+        self.bomb_cooldown = 1.0
 
         self.speed_particles = 0
-        self.speed_particles_needed = 5
-
         self.bomb_particles = 0
-        self.bomb_particles_needed = 8
-
         self.coins = 0
 
         self.has_shield = False
@@ -245,17 +214,14 @@ class Hero(arcade.Sprite):
         self.center_x = SCREEN_WIDTH // 2
         self.center_y = SCREEN_HEIGHT // 2
 
-        try:
-            self.idle_texture = arcade.load_texture("assets/Plaer1_purple/idle.png")
-            self.texture = self.idle_texture
-            self.walk_textures = []
-            for i in range(1, 5):
-                texture = arcade.load_texture(f"assets/Plaer1_purple/walk{i}.png")
-                self.walk_textures.append(texture)
-        except:
-            self.walk_textures = []
-            self.idle_texture = arcade.make_soft_square_texture(50, arcade.color.PURPLE, center_alpha=255)
-            self.texture = self.idle_texture
+        self.idle_texture = arcade.load_texture(
+            "assets/Plaer1_purple/idle.png")
+        self.texture = self.idle_texture
+        self.walk_textures = []
+        for i in range(1, 5):
+            texture = arcade.load_texture(
+                f"assets/Plaer1_purple/walk{i}.png")
+            self.walk_textures.append(texture)
 
         self.current_texture = 0
         self.texture_change_time = 0
@@ -306,25 +272,24 @@ class Hero(arcade.Sprite):
             dy *= factor
 
         old_x, old_y = self.center_x, self.center_y
-        
+
         self.center_x += dx
         self.center_y += dy
 
-        # Проверка столкновений
         collision_happened = False
-        
+
         if hasattr(self.game, 'collision_list'):
             if arcade.check_for_collision_with_list(self, self.game.collision_list):
                 collision_happened = True
-        
+
         if hasattr(self.game, 'destroy_list'):
             if arcade.check_for_collision_with_list(self, self.game.destroy_list):
                 collision_happened = True
-        
+
         if hasattr(self.game, 'Indestructible_list'):
             if arcade.check_for_collision_with_list(self, self.game.Indestructible_list):
                 collision_happened = True
-        
+
         if hasattr(self.game, 'destructible_list'):
             if arcade.check_for_collision_with_list(self, self.game.destructible_list):
                 collision_happened = True
@@ -334,8 +299,10 @@ class Hero(arcade.Sprite):
 
         margin_x = 30
         margin_y = 20
-        self.center_x = max(margin_x, min(SCREEN_WIDTH - margin_x, self.center_x))
-        self.center_y = max(margin_y, min(SCREEN_HEIGHT - margin_y, self.center_y))
+        self.center_x = max(margin_x, min(
+            SCREEN_WIDTH - margin_x, self.center_x))
+        self.center_y = max(margin_y, min(
+            SCREEN_HEIGHT - margin_y, self.center_y))
         self.is_walking = dx != 0 or dy != 0
 
     def can_place_bomb(self):
@@ -377,13 +344,11 @@ class Hero(arcade.Sprite):
 
     def add_speed_particle(self):
         self.speed_particles += 1
-        print(f"🔵 [Игрок 1] Частичка скорости: {self.speed_particles}/{self.speed_particles_needed}")
-
-        if self.speed_particles >= self.speed_particles_needed:
+        
+        if self.speed_particles % 5 == 0:
             self.upgrade_speed()
 
     def upgrade_speed(self):
-        self.speed_particles = 0
         self.speed_level += 1
 
         if self.speed_level == 2:
@@ -397,36 +362,28 @@ class Hero(arcade.Sprite):
         else:
             self.speed_multiplier = 2.0
 
-        self.speed_particles_needed = min(20, self.speed_particles_needed + 3)
-        print(f"🚀 [Игрок 1] Улучшена скорость! Уровень {self.speed_level}, множитель: {self.speed_multiplier:.1f}")
 
     def add_bomb_particle(self):
         self.bomb_particles += 1
-        print(f"🔴 [Игрок 1] Частичка бомбы: {self.bomb_particles}/{self.bomb_particles_needed}")
-
-        if self.bomb_particles >= self.bomb_particles_needed:
+        
+        if self.bomb_particles % 8 == 0:
             self.upgrade_bombs()
 
     def upgrade_bombs(self):
-        self.bomb_particles = 0
         self.bomb_level += 1
         self.bomb_limit += 1
-        self.bomb_particles_needed = min(15, self.bomb_particles_needed + 2)
-        print(f"💣 [Игрок 1] Улучшены бомбы! Теперь можно ставить {self.bomb_limit} бомб")
+        self.explosion_radius += 1
 
     def add_coin(self, amount=1):
         self.coins += amount
-        print(f"💰 [Игрок 1] Монеты: {self.coins}")
 
     def give_shield(self):
         self.has_shield = True
         self.shield_end_time = time.time() + 10
-        print(f"🛡️ [Игрок 1] Получен щит! Защита от следующего удара")
 
     def give_star(self):
         self.has_star = True
         self.star_end_time = time.time() + 8
-        print(f"⭐ [Игрок 1] Получена звезда! Следующее прикосновение убивает противника")
 
     def take_damage(self, damage):
         if not self.is_alive:
@@ -434,22 +391,27 @@ class Hero(arcade.Sprite):
 
         if self.has_shield:
             self.has_shield = False
-            print("🛡️ [Игрок 1] Щит поглотил урон!")
             return
 
         self.health -= damage
         if self.health <= 0:
             self.health = 0
             self.is_alive = False
-            print("💀 [Игрок 1] Игрок погиб!")
+
 
 class MyGame(arcade.Window):
     def __init__(self, width, height, title, resizable=False):
         super().__init__(width, height, title, resizable)
 
         self.in_menu = True
-        self.game_paused = False 
-        self.hover_button = 0  # Добавляем переменную для подсветки
+        self.in_settings = False
+        self.in_rules = False
+        self.game_paused = False
+        self.hover_button = 0
+        self.hover_settings_button = 0
+        self.sound_enabled = True
+        self.db = DB()  
+        self.sound_enabled = self.db.get()
         self.keys_pressed = set()
         self.explosion_time = 0
         self.show_explosion = False
@@ -458,16 +420,21 @@ class MyGame(arcade.Window):
         self.tile_size = 70
         self.death_time = 0
         self.restart_cooldown = 3.0
-
+        self.background_music = None
+        self.music_player = None
+        self.current_map = 0
         self.particle_chance = 0.3
         self.shield_chance = 0.1
         self.star_chance = 0.1
         self.coin_chance = 0.5
         self.pause_button = PauseButton(x=40, y=SCREEN_HEIGHT - 10)
+
+        self.background_music = arcade.load_sound(
+            "music/Track-3-Boomberman.wav")
+
     def setup(self, map_index):
-        """Загружаем карту по индексу - без проверок!"""
-        map_file = AVAILABLE_MAPS[map_index]  # Просто берем карту по индексу
-        print(f"🎮 Загружаю карту: {map_file}")
+        self.current_map = map_index
+        map_file = AVAILABLE_MAPS[map_index]
 
         self.player_list = arcade.SpriteList()
         self.bomb_list = arcade.SpriteList()
@@ -476,31 +443,39 @@ class MyGame(arcade.Window):
         self.shield_list = arcade.SpriteList()
         self.star_list = arcade.SpriteList()
         self.coin_list = arcade.SpriteList()
+        self.loot_cells = set()
         self.pause_button.is_paused = False
-        try:
-            TILE_SCALING = 1
-            tile_map = arcade.load_tilemap(map_file, scaling=TILE_SCALING)
 
-            self.Indestructible_list = tile_map.sprite_lists.get("Indestructible", arcade.SpriteList())
-            self.destructible_list = tile_map.sprite_lists.get("destructible", arcade.SpriteList())
-            self.Background_list = tile_map.sprite_lists.get("Background", arcade.SpriteList())
-            self.collision_list = tile_map.sprite_lists.get("Colision", arcade.SpriteList())
-            self.destroy_list = tile_map.sprite_lists.get("Destroy", arcade.SpriteList())
-        except:
-            print(f"❌ Ошибка загрузки карты {map_file}")
-            self.create_empty_lists()
+        TILE_SCALING = 1
+        tile_map = arcade.load_tilemap(map_file, scaling=TILE_SCALING)
+
+        self.Indestructible_list = tile_map.sprite_lists.get(
+            "Indestructible", arcade.SpriteList())
+        self.destructible_list = tile_map.sprite_lists.get(
+            "destructible", arcade.SpriteList())
+        self.Background_list = tile_map.sprite_lists.get(
+            "Background", arcade.SpriteList())
+        self.collision_list = tile_map.sprite_lists.get(
+            "Colision", arcade.SpriteList())
+        self.destroy_list = tile_map.sprite_lists.get(
+            "Destroy", arcade.SpriteList())
 
         self.player = Hero(self)
         self.player.center_x = 95
         self.player.center_y = 960
         self.player_list.append(self.player)
-        
+
         self.player2 = Player2(self)
-        self.player2.center_x = 1225  # Правая сторона
+        self.player2.center_x = 1225
         self.player2.center_y = 110
         self.player_list.append(self.player2)
-        self.sound = arcade.load_sound("music/Track-3-Boomberman.wav")
-        arcade.play_sound(self.sound,volume=0.3)
+
+        if self.sound_enabled:
+            if self.music_player is not None:
+                arcade.stop_sound(self.music_player)
+            self.music_player = arcade.play_sound(
+                self.background_music, volume=0.3)
+
     def create_empty_lists(self):
         self.Indestructible_list = arcade.SpriteList()
         self.destructible_list = arcade.SpriteList()
@@ -509,7 +484,6 @@ class MyGame(arcade.Window):
         self.destroy_list = arcade.SpriteList()
 
     def is_player_in_explosion_radius(self, bomb_x, bomb_y, player, bomb_owner):
-        """Проверяет, находится ли игрок в радиусе взрыва"""
         if not player.is_alive:
             return False
 
@@ -583,30 +557,24 @@ class MyGame(arcade.Window):
         if rand < self.coin_chance:
             coin = Coin(loot_x, loot_y)
             self.coin_list.append(coin)
-            print("💰 Выпала монетка!")
 
         elif rand < self.coin_chance + self.particle_chance:
             if random.random() < 0.5:
                 particle = SpeedParticle(loot_x, loot_y)
                 self.speed_particles.append(particle)
-                print("🔵 Выпала частичка скорости!")
             else:
                 particle = BombParticle(loot_x, loot_y)
                 self.bomb_particles.append(particle)
-                print("🔴 Выпала частичка бомбы!")
 
         elif rand < self.coin_chance + self.particle_chance + self.shield_chance:
             shield = Shield(loot_x, loot_y)
             self.shield_list.append(shield)
-            print("🛡️ Выпал щит!")
 
         else:
             star = Star(loot_x, loot_y)
             self.star_list.append(star)
-            print("⭐ Выпала звезда!")
 
     def check_collisions(self):
-        # Проверки для первого игрока
         speed_hit_list = arcade.check_for_collision_with_list(
             self.player, self.speed_particles
         )
@@ -647,7 +615,6 @@ class MyGame(arcade.Window):
             self.player.give_star()
             star.remove_from_sprite_lists()
 
-        # Проверки для второго игрока (такие же)
         speed_hit_list2 = arcade.check_for_collision_with_list(
             self.player2, self.speed_particles
         )
@@ -687,32 +654,26 @@ class MyGame(arcade.Window):
         for star in star_hit_list2:
             self.player2.give_star()
             star.remove_from_sprite_lists()
+
         self.check_star_kills()
 
     def check_star_kills(self):
         """Звезда убивает противника при касании"""
-        # Проверяем столкновение игроков
         if arcade.check_for_collision(self.player, self.player2):
-            # Игрок 1 имеет звезду
             if self.player.has_star and self.player2.is_alive:
-                if not self.player2.has_shield:  # Щит защищает
-                    print("⭐ Игрок 1 убивает звездой игрока 2!")
+                if not self.player2.has_shield:
                     self.player2.take_damage(100)
                 else:
-                    print("🛡️ Щит игрока 2 защитил от звезды!")
                     self.player2.has_shield = False
-                self.player.has_star = False  # Звезда исчезает
-            
-            # Игрок 2 имеет звезду
+                self.player.has_star = False
+
             elif self.player2.has_star and self.player.is_alive:
                 if not self.player.has_shield:
-                    print("⭐ Игрок 2 убивает звездой игрока 1!")
                     self.player.take_damage(100)
                 else:
-                    print("🛡️ Щит игрока 1 защитил от звезды!")
                     self.player.has_shield = False
                 self.player2.has_star = False
-        
+
     def destroy_blocks(self, bomb):
         tile_size = self.tile_size
         bomb_cell_x = int(bomb.center_x // tile_size)
@@ -754,14 +715,16 @@ class MyGame(arcade.Window):
             if blocked:
                 continue
 
-            blocks_in_cell = self.get_blocks_in_cell(check_x, check_y, self.destructible_list)
+            blocks_in_cell = self.get_blocks_in_cell(
+                check_x, check_y, self.destructible_list)
             if blocks_in_cell:
                 destroyed_cells.append((check_x, check_y))
                 for block in blocks_in_cell:
                     block.remove_from_sprite_lists()
                     destroyed_blocks = True
 
-            blocks_in_cell = self.get_blocks_in_cell(check_x, check_y, self.destroy_list)
+            blocks_in_cell = self.get_blocks_in_cell(
+                check_x, check_y, self.destroy_list)
             if blocks_in_cell:
                 if (check_x, check_y) not in destroyed_cells:
                     destroyed_cells.append((check_x, check_y))
@@ -778,57 +741,217 @@ class MyGame(arcade.Window):
 
     def draw_menu(self):
         self.clear()
-        arcade.draw_lrbt_rectangle_filled(0, SCREEN_WIDTH, 0, SCREEN_HEIGHT, arcade.color.DARK_SLATE_GRAY)
+        arcade.draw_lrbt_rectangle_filled(
+            0, SCREEN_WIDTH, 0, SCREEN_HEIGHT, arcade.color.DARK_SLATE_GRAY)
 
         arcade.draw_text("BOMBER GAME", SCREEN_WIDTH // 2, SCREEN_HEIGHT - 150,
-                        arcade.color.YELLOW, 60, anchor_x="center", bold=True)
-        arcade.draw_text("▼ ВЫБЕРИТЕ КАРТУ ▼", SCREEN_WIDTH // 2, SCREEN_HEIGHT - 350,
-                    arcade.color.LIGHT_CYAN, 36, anchor_x="center")
+                         arcade.color.YELLOW, 60, anchor_x="center", bold=True)
 
-
-        # Кнопка 1 - меняем цвет в зависимости от hover_button
-        if self.hover_button == 1:
-            color1 = arcade.color.LIGHT_CORNFLOWER_BLUE  # Светлый при наведении
+        if self.in_settings:
+            self.draw_settings_menu()
+        elif self.in_rules:
+            self.draw_rules_menu()
         else:
-            color1 = arcade.color.LIGHT_BLUE  # Обычный
+            self.draw_main_menu()
 
-        left = 750  # SCREEN_WIDTH//2 - 200
-        right = 1150  # SCREEN_WIDTH//2 + 200
-        bottom = 485  # SCREEN_HEIGHT//2 - 40
-        top = 565  # SCREEN_HEIGHT//2 + 40
+    def draw_main_menu(self):
+        arcade.draw_text("▼ ВЫБЕРИТЕ КАРТУ ▼", SCREEN_WIDTH // 2, SCREEN_HEIGHT - 350,
+                         arcade.color.LIGHT_CYAN, 36, anchor_x="center")
+
+        if self.hover_button == 1:
+            color1 = arcade.color.LIGHT_CORNFLOWER_BLUE
+        else:
+            color1 = arcade.color.LIGHT_BLUE
+
+        left = 750
+        right = 1150
+        bottom = 485
+        top = 565
 
         arcade.draw_lrbt_rectangle_filled(left, right, bottom, top, color1)
-        arcade.draw_lrbt_rectangle_outline(left, right, bottom, top, arcade.color.WHITE, 3)
+        arcade.draw_lrbt_rectangle_outline(
+            left, right, bottom, top, arcade.color.WHITE, 3)
         arcade.draw_text("Карта 1", SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2,
-                        arcade.color.WHITE, 28, anchor_x="center", anchor_y="center")
+                         arcade.color.WHITE, 28, anchor_x="center", anchor_y="center")
 
-        # Кнопка 2
         if self.hover_button == 2:
             color2 = arcade.color.LIGHT_CORNFLOWER_BLUE
         else:
             color2 = arcade.color.LIGHT_BLUE
 
-        bottom2 = 385  # (SCREEN_HEIGHT//2 - 100) - 40
-        top2 = 465  # (SCREEN_HEIGHT//2 - 100) + 40
+        bottom2 = 385
+        top2 = 465
 
         arcade.draw_lrbt_rectangle_filled(left, right, bottom2, top2, color2)
-        arcade.draw_lrbt_rectangle_outline(left, right, bottom2, top2, arcade.color.WHITE, 3)
+        arcade.draw_lrbt_rectangle_outline(
+            left, right, bottom2, top2, arcade.color.WHITE, 3)
         arcade.draw_text("Карта 2", SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 100,
-                        arcade.color.WHITE, 28, anchor_x="center", anchor_y="center")
+                         arcade.color.WHITE, 28, anchor_x="center", anchor_y="center")
 
-        # Кнопка 3
         if self.hover_button == 3:
             color3 = arcade.color.LIGHT_CORNFLOWER_BLUE
         else:
             color3 = arcade.color.LIGHT_BLUE
 
-        bottom3 = 285  # (SCREEN_HEIGHT//2 - 200) - 40
-        top3 = 365  # (SCREEN_HEIGHT//2 - 200) + 40
+        bottom3 = 285
+        top3 = 365
 
         arcade.draw_lrbt_rectangle_filled(left, right, bottom3, top3, color3)
-        arcade.draw_lrbt_rectangle_outline(left, right, bottom3, top3, arcade.color.WHITE, 3)
+        arcade.draw_lrbt_rectangle_outline(
+            left, right, bottom3, top3, arcade.color.WHITE, 3)
         arcade.draw_text("Карта 3", SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 200,
-                        arcade.color.WHITE, 28, anchor_x="center", anchor_y="center")
+                         arcade.color.WHITE, 28, anchor_x="center", anchor_y="center")
+
+        if self.hover_button == 4:
+            settings_color = arcade.color.LIGHT_CORNFLOWER_BLUE
+        else:
+            settings_color = arcade.color.GRAY
+
+        settings_left = SCREEN_WIDTH - 210
+        settings_right = SCREEN_WIDTH - 35
+        settings_bottom = 50
+        settings_top = 120
+
+        arcade.draw_lrbt_rectangle_filled(
+            settings_left, settings_right, settings_bottom, settings_top, settings_color)
+        arcade.draw_lrbt_rectangle_outline(
+            settings_left, settings_right, settings_bottom, settings_top, arcade.color.WHITE, 3)
+        arcade.draw_text("⚙️ НАСТРОЙКИ", SCREEN_WIDTH - 125, 85,
+                         arcade.color.WHITE, 18, anchor_x="center", anchor_y="center")
+
+    def draw_settings_menu(self):
+        arcade.draw_lrbt_rectangle_filled(
+            0, SCREEN_WIDTH, 0, SCREEN_HEIGHT, (30, 30, 30, 200))
+
+        window_width = 600
+        window_height = 500
+        left = SCREEN_WIDTH // 2 - window_width // 2
+        right = SCREEN_WIDTH // 2 + window_width // 2
+        bottom = SCREEN_HEIGHT // 2 - window_height // 2
+        top = SCREEN_HEIGHT // 2 + window_height // 2
+
+        arcade.draw_lrbt_rectangle_filled(
+            left, right, bottom, top, arcade.color.DARK_SLATE_GRAY)
+        arcade.draw_lrbt_rectangle_outline(
+            left, right, bottom, top, arcade.color.WHITE, 4)
+
+        arcade.draw_text("НАСТРОЙКИ", SCREEN_WIDTH // 2, top - 50,
+                         arcade.color.YELLOW, 40, anchor_x="center", bold=True)
+
+        sound_y = top - 130
+        if self.hover_settings_button == 1:
+            sound_color = arcade.color.LIGHT_CORNFLOWER_BLUE
+        else:
+            sound_color = arcade.color.LIGHT_BLUE
+
+        arcade.draw_lrbt_rectangle_filled(
+            left + 50, right - 50, sound_y - 30, sound_y + 30, sound_color)
+        arcade.draw_lrbt_rectangle_outline(
+            left + 50, right - 50, sound_y - 30, sound_y + 30, arcade.color.WHITE, 2)
+
+        sound_text = f"🔊 Звук: {'ВКЛ' if self.sound_enabled else 'ВЫКЛ'}"
+        arcade.draw_text(sound_text, SCREEN_WIDTH // 2, sound_y,
+                         arcade.color.WHITE, 24, anchor_x="center", anchor_y="center")
+
+        rules_y = top - 210
+        if self.hover_settings_button == 2:
+            rules_color = arcade.color.LIGHT_CORNFLOWER_BLUE
+        else:
+            rules_color = arcade.color.LIGHT_BLUE
+
+        arcade.draw_lrbt_rectangle_filled(
+            left + 50, right - 50, rules_y - 30, rules_y + 30, rules_color)
+        arcade.draw_lrbt_rectangle_outline(
+            left + 50, right - 50, rules_y - 30, rules_y + 30, arcade.color.WHITE, 2)
+
+        arcade.draw_text("📖 ПРАВИЛА ИГРЫ", SCREEN_WIDTH // 2, rules_y,
+                         arcade.color.WHITE, 24, anchor_x="center", anchor_y="center")
+
+        back_y = bottom + 50
+        if self.hover_settings_button == 3:
+            back_color = arcade.color.LIGHT_CORNFLOWER_BLUE
+        else:
+            back_color = arcade.color.LIGHT_BLUE
+
+        arcade.draw_lrbt_rectangle_filled(
+            left + 50, right - 50, back_y - 30, back_y + 30, back_color)
+        arcade.draw_lrbt_rectangle_outline(
+            left + 50, right - 50, back_y - 30, back_y + 30, arcade.color.WHITE, 2)
+
+        arcade.draw_text("НАЗАД", SCREEN_WIDTH // 2, back_y,
+                         arcade.color.WHITE, 24, anchor_x="center", anchor_y="center")
+
+    def draw_rules_menu(self):
+        arcade.draw_lrbt_rectangle_filled(
+            0, SCREEN_WIDTH, 0, SCREEN_HEIGHT, (30, 30, 30, 200))
+
+        window_width = 1000
+        window_height = 750
+        left = SCREEN_WIDTH // 2 - window_width // 2
+        right = SCREEN_WIDTH // 2 + window_width // 2
+        bottom = SCREEN_HEIGHT // 2 - window_height // 2
+        top = SCREEN_HEIGHT // 2 + window_height // 2
+
+        arcade.draw_lrbt_rectangle_filled(
+            left, right, bottom, top, arcade.color.DARK_SLATE_GRAY)
+        arcade.draw_lrbt_rectangle_outline(
+            left, right, bottom, top, arcade.color.WHITE, 4)
+
+        arcade.draw_text("ПРАВИЛА ИГРЫ", SCREEN_WIDTH // 2, top - 50,
+                         arcade.color.YELLOW, 40, anchor_x="center", bold=True)
+
+        rules_text = [
+            "🎮 УПРАВЛЕНИЕ:",
+            "Игрок 1 (фиолетовый): WASD - движение, ПРОБЕЛ - бомба",
+            "Игрок 2 (зеленый): Стрелки - движение, ENTER - бомба",
+            "Esc - выход в меню/шаг назад в меню",
+            "",
+            "💣 ИГРОВЫЕ МЕХАНИКИ:",
+            "• Бомбы взрываются через 2 секунды",
+            "• Взрыв уничтожает блоки и игроков",
+            "• Нельзя ставить бомбу на другую бомбу",
+            "",
+            "⭐ УЛУЧШЕНИЯ:",
+            "🔵 Синие частицы - увеличивают скорость (каждые 5 шт)",
+            "🔴 Красные частицы - увеличивают кол-во бомб (каждые 8 шт)",
+            "🛡️ Щит - защищает от одного попадания",
+            "⭐ Звезда - убивает врага при касании",
+            "💰 Монеты - просто для счета",
+            "",
+            "⏸️ Пауза - кнопка в левом верхнем углу",
+            "",
+            "Цель игры - уничтожить противника!"
+        ]
+
+        y_offset = top - 120
+        for line in rules_text:
+            if line.startswith("🎮") or line.startswith("💣") or line.startswith("⭐") or line.startswith("Цель"):
+                color = arcade.color.YELLOW
+                size = 20
+            elif line == "":
+                y_offset -= 20
+                continue
+            else:
+                color = arcade.color.WHITE
+                size = 18
+
+            arcade.draw_text(line, SCREEN_WIDTH // 2, y_offset,
+                             color, size, anchor_x="center")
+            y_offset -= 30
+
+        back_y = bottom + 50
+        if self.hover_settings_button == 4:
+            back_color = arcade.color.LIGHT_CORNFLOWER_BLUE
+        else:
+            back_color = arcade.color.LIGHT_BLUE
+
+        arcade.draw_lrbt_rectangle_filled(
+            left + 50, right - 50, back_y - 30, back_y + 30, back_color)
+        arcade.draw_lrbt_rectangle_outline(
+            left + 50, right - 50, back_y - 30, back_y + 30, arcade.color.WHITE, 2)
+
+        arcade.draw_text("НАЗАД", SCREEN_WIDTH // 2, back_y,
+                         arcade.color.WHITE, 24, anchor_x="center", anchor_y="center")
 
     def draw_game(self):
         self.clear()
@@ -846,6 +969,7 @@ class MyGame(arcade.Window):
         self.bomb_list.draw()
         self.player_list.draw()
         self.pause_button.draw()
+
         if self.player.has_shield:
             arcade.draw_circle_outline(
                 self.player.center_x, self.player.center_y, 40,
@@ -876,7 +1000,7 @@ class MyGame(arcade.Window):
             bomb_col = int(self.explosion_x // tile_size)
             bomb_row = int(self.explosion_y // tile_size)
 
-            directions = [(0,0), (0,1), (0,-1), (-1,0), (1,0)]
+            directions = [(0, 0), (0, 1), (0, -1), (-1, 0), (1, 0)]
             for dx, dy in directions:
                 cell_x = bomb_col + dx
                 cell_y = bomb_row + dy
@@ -889,46 +1013,42 @@ class MyGame(arcade.Window):
                     cell_left, cell_right, cell_bottom, cell_top,
                     (255, 0, 0, alpha // 3)
                 )
-        if self.game_paused == True:
-            
+
+        if self.game_paused:
             arcade.draw_lrbt_rectangle_filled(
-            0, SCREEN_WIDTH, 0, SCREEN_HEIGHT,
-            (0, 0, 0, 128)  # Черный с 50% прозрачностью
+                0, SCREEN_WIDTH, 0, SCREEN_HEIGHT,
+                (0, 0, 0, 128)
             )
-        
-        # Большая надпись "ПАУЗА" по центру
+
             arcade.draw_text(
                 "ПАУЗА",
                 SCREEN_WIDTH // 2,
                 SCREEN_HEIGHT // 2,
                 arcade.color.YELLOW,
-                80,  # Размер шрифта
+                80,
                 anchor_x="center",
                 anchor_y="center",
                 bold=True
             )
-    
-        
-        # ===== СТАТИСТИКА ИГРОКА 1 (ВЕРХНИЙ ПРАВЫЙ УГОЛ) =====
-        start_x = SCREEN_WIDTH - 250  # Отступ справа
-        start_y = SCREEN_HEIGHT - 50  # Начинаем сверху
-        
-        # Фон для статистики игрока 1
+
+        start_x = SCREEN_WIDTH - 250
+        start_y = SCREEN_HEIGHT - 50
+
         arcade.draw_lrbt_rectangle_filled(
             start_x - 10, SCREEN_WIDTH - 10, start_y - 210, start_y + 30,
-            (50, 50, 50, 200)  # Темно-серый с прозрачностью
+            (50, 50, 50, 200)
         )
         arcade.draw_lrbt_rectangle_outline(
             start_x - 10, SCREEN_WIDTH - 10, start_y - 210, start_y + 30,
             arcade.color.PURPLE, 2
         )
-        
+
         arcade.draw_text(
-            f"Игрок 1 (фиолетовый)",
+            "Игрок 1 (фиолетовый)",
             start_x, start_y,
             arcade.color.PURPLE, 20
         )
-        
+
         arcade.draw_text(
             f"Бомбы: {self.player.active_bombs}/{self.player.bomb_limit}",
             start_x, start_y - 30,
@@ -942,13 +1062,13 @@ class MyGame(arcade.Window):
         )
 
         arcade.draw_text(
-            f"⚡: {self.player.speed_particles}/{self.player.speed_particles_needed}",
+            f"⚡: {self.player.speed_particles}",
             start_x, start_y - 90,
             arcade.color.LIGHT_BLUE, 16
         )
 
         arcade.draw_text(
-            f"💣: {self.player.bomb_particles}/{self.player.bomb_particles_needed}",
+            f"💣: {self.player.bomb_particles}",
             start_x, start_y - 115,
             arcade.color.LIGHT_CORAL, 16
         )
@@ -975,26 +1095,24 @@ class MyGame(arcade.Window):
                 arcade.color.YELLOW_ORANGE, 16
             )
 
-        # ===== СТАТИСТИКА ИГРОКА 2 (ПРАВЫЙ НИЖНИЙ УГОЛ) =====
-        start_x2 = SCREEN_WIDTH - 250  # Отступ справа тот же
-        start_y2 = 200  # Начинаем снизу
-        
-        # Фон для статистики игрока 2
+        start_x2 = SCREEN_WIDTH - 250
+        start_y2 = 200
+
         arcade.draw_lrbt_rectangle_filled(
             start_x2 - 10, SCREEN_WIDTH - 10, start_y2 - 210, start_y2 + 30,
-            (50, 50, 50, 200)  # Темно-серый с прозрачностью
+            (50, 50, 50, 200)
         )
         arcade.draw_lrbt_rectangle_outline(
             start_x2 - 10, SCREEN_WIDTH - 10, start_y2 - 210, start_y2 + 30,
             arcade.color.GREEN, 2
         )
-        
+
         arcade.draw_text(
-            f"Игрок 2 (зеленый)",
+            "Игрок 2 (зеленый)",
             start_x2, start_y2,
             arcade.color.GREEN, 20
         )
-        
+
         arcade.draw_text(
             f"Бомбы: {self.player2.active_bombs}/{self.player2.bomb_limit}",
             start_x2, start_y2 - 30,
@@ -1008,13 +1126,13 @@ class MyGame(arcade.Window):
         )
 
         arcade.draw_text(
-            f"⚡: {self.player2.speed_particles}/{self.player2.speed_particles_needed}",
+            f"⚡: {self.player2.speed_particles}",
             start_x2, start_y2 - 90,
             arcade.color.LIGHT_BLUE, 16
         )
 
         arcade.draw_text(
-            f"💣: {self.player2.bomb_particles}/{self.player2.bomb_particles_needed}",
+            f"💣: {self.player2.bomb_particles}",
             start_x2, start_y2 - 115,
             arcade.color.LIGHT_CORAL, 16
         )
@@ -1041,47 +1159,41 @@ class MyGame(arcade.Window):
                 arcade.color.YELLOW_ORANGE, 16
             )
 
-        # Сообщение о конце игры в красивом прямоугольнике
         if not self.player.is_alive or not self.player2.is_alive:
             if not self.player.is_alive and not self.player2.is_alive:
                 winner_text = "НИЧЬЯ! Оба игрока погибли!"
-                rect_color = (100, 100, 100, 220)  # Серый
+                rect_color = (100, 100, 100, 220)
                 text_color = arcade.color.LIGHT_GRAY
             elif not self.player.is_alive:
                 winner_text = "ПОБЕДИТЕЛЬ: Игрок 2 (зеленый)!"
-                rect_color = (0, 150, 0, 220)  # Зеленый
+                rect_color = (0, 150, 0, 220)
                 text_color = arcade.color.LIME_GREEN
             else:
                 winner_text = "ПОБЕДИТЕЛЬ: Игрок 1 (фиолетовый)!"
-                rect_color = (150, 0, 150, 220)  # Фиолетовый
+                rect_color = (150, 0, 150, 220)
                 text_color = arcade.color.VIOLET
-            
-            # Прямоугольник для сообщения
+
             rect_width = 1100
             rect_height = 200
             rect_x = SCREEN_WIDTH // 2 - rect_width // 2
             rect_y = SCREEN_HEIGHT // 2 - rect_height // 2
-            
-            # Фон прямоугольника
+
             arcade.draw_lrbt_rectangle_filled(
                 rect_x, rect_x + rect_width, rect_y, rect_y + rect_height,
                 rect_color
             )
-            
-            # Обводка прямоугольника
+
             arcade.draw_lrbt_rectangle_outline(
                 rect_x, rect_x + rect_width, rect_y, rect_y + rect_height,
                 arcade.color.WHITE, 4
             )
-            
-            # Текст победителя
+
             arcade.draw_text(
                 winner_text,
                 SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 + 30,
                 text_color, 50, anchor_x="center", bold=True
             )
-            
-            # Инструкция для рестарта
+
             arcade.draw_text(
                 "Нажмите R для рестарта",
                 SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2 - 50,
@@ -1096,76 +1208,169 @@ class MyGame(arcade.Window):
 
     def on_mouse_press(self, x, y, button, modifiers):
         if self.in_menu and button == arcade.MOUSE_BUTTON_LEFT:
-            # Просто проверяем hover_button
-            if self.hover_button == 1:
-                self.in_menu = False
-                self.setup(0)
-                print("🎮 Запускаю карту 1")
-            elif self.hover_button == 2:
-                self.in_menu = False
-                self.setup(1)
-                print("🎮 Запускаю карту 2")
-            elif self.hover_button == 3:
-                self.in_menu = False
-                self.setup(2)
-                print("🎮 Запускаю карту 3")
-        if button == arcade.MOUSE_BUTTON_LEFT:
+            if self.in_settings:
+                window_width = 600
+                window_height = 500
+                left = SCREEN_WIDTH // 2 - window_width // 2
+                right = SCREEN_WIDTH // 2 + window_width // 2
+                bottom = SCREEN_HEIGHT // 2 - window_height // 2
+                top = SCREEN_HEIGHT // 2 + window_height // 2
+
+                sound_y = top - 130
+                rules_y = top - 210
+                back_y = bottom + 50
+
+                if left + 50 <= x <= right - 50 and sound_y - 30 <= y <= sound_y + 30:
+                    self.sound_enabled = not self.sound_enabled
+                    self.db.set(self.sound_enabled)
+
+                elif left + 50 <= x <= right - 50 and rules_y - 30 <= y <= rules_y + 30:
+                    self.in_rules = True
+                    self.in_settings = False
+
+                elif left + 50 <= x <= right - 50 and back_y - 30 <= y <= back_y + 30:
+                    self.in_settings = False
+
+            elif self.in_rules:
+                window_width = 1000
+                window_height = 750
+                left = SCREEN_WIDTH // 2 - window_width // 2
+                right = SCREEN_WIDTH // 2 + window_width // 2
+                bottom = SCREEN_HEIGHT // 2 - window_height // 2
+                top = SCREEN_HEIGHT // 2 + window_height // 2
+
+                back_y = bottom + 50
+
+                if left + 50 <= x <= right - 50 and back_y - 30 <= y <= back_y + 30:
+                    self.in_rules = False
+                    self.in_settings = True
+
+            else:
+                if 750 <= x <= 1150:
+                    if 485 <= y <= 565:
+                        self.in_menu = False
+                        self.setup(0)
+                    elif 385 <= y <= 465:
+                        self.in_menu = False
+                        self.setup(1)
+                    elif 285 <= y <= 365:
+                        self.in_menu = False
+                        self.setup(2)
+
+                settings_left = SCREEN_WIDTH - 200
+                settings_right = SCREEN_WIDTH - 50
+                settings_bottom = 50
+                settings_top = 120
+
+                if settings_left <= x <= settings_right and settings_bottom <= y <= settings_top:
+                    self.in_settings = True
+
+        elif button == arcade.MOUSE_BUTTON_LEFT:
             if self.pause_button.check_click(x, y):
                 self.game_paused = self.pause_button.is_paused
-                print(f"⏸️ Пауза: {self.game_paused}")
+
     def on_mouse_motion(self, x, y, dx, dy):
         if not self.in_menu:
             return
 
-        # Просто смотрим координаты мыши
-        if 750 <= x <= 1150:  # Все кнопки по ширине
-            if 485 <= y <= 565:  # Кнопка 1
-                self.hover_button = 1
-            elif 385 <= y <= 465:  # Кнопка 2
-                self.hover_button = 2
-            elif 285 <= y <= 365:  # Кнопка 3
-                self.hover_button = 3
-            else:
-                self.hover_button = 0
+        self.hover_button = 0
+        self.hover_settings_button = 0
+
+        if self.in_settings:
+            window_width = 600
+            window_height = 500
+            left = SCREEN_WIDTH // 2 - window_width // 2
+            right = SCREEN_WIDTH // 2 + window_width // 2
+            bottom = SCREEN_HEIGHT // 2 - window_height // 2
+            top = SCREEN_HEIGHT // 2 + window_height // 2
+
+            sound_y = top - 130
+            rules_y = top - 210
+            back_y = bottom + 50
+
+            if left + 50 <= x <= right - 50:
+                if sound_y - 30 <= y <= sound_y + 30:
+                    self.hover_settings_button = 1
+                elif rules_y - 30 <= y <= rules_y + 30:
+                    self.hover_settings_button = 2
+                elif back_y - 30 <= y <= back_y + 30:
+                    self.hover_settings_button = 3
+
+        elif self.in_rules:
+            window_width = 1000
+            window_height = 750
+            left = SCREEN_WIDTH // 2 - window_width // 2
+            right = SCREEN_WIDTH // 2 + window_width // 2
+            bottom = SCREEN_HEIGHT // 2 - window_height // 2
+            top = SCREEN_HEIGHT // 2 + window_height // 2
+
+            back_y = bottom + 50
+
+            if left + 50 <= x <= right - 50 and back_y - 30 <= y <= back_y + 30:
+                self.hover_settings_button = 4
+
         else:
-            self.hover_button = 0
+            if 750 <= x <= 1150:
+                if 485 <= y <= 565:
+                    self.hover_button = 1
+                elif 385 <= y <= 465:
+                    self.hover_button = 2
+                elif 285 <= y <= 365:
+                    self.hover_button = 3
+
+            settings_left = SCREEN_WIDTH - 200
+            settings_right = SCREEN_WIDTH - 50
+            settings_bottom = 50
+            settings_top = 120
+
+            if settings_left <= x <= settings_right and settings_bottom <= y <= settings_top:
+                self.hover_button = 4
+
     def on_key_press(self, key, modifiers):
         if self.in_menu:
-            # Можно переключать карты клавишами 1,2,3 даже в меню
             if key == arcade.key.KEY_1:
                 self.in_menu = False
                 self.setup(0)
-                print("🎮 Запускаю карту 1")
             elif key == arcade.key.KEY_2:
                 self.in_menu = False
                 self.setup(1)
-                print("🎮 Запускаю карту 2")
             elif key == arcade.key.KEY_3:
                 self.in_menu = False
                 self.setup(2)
-                print("🎮 Запускаю карту 3")
             elif key == arcade.key.ESCAPE:
-                arcade.close_window()
+                if self.in_rules:
+                    self.in_rules = False
+                    self.in_settings = True
+                elif self.in_settings:
+                    self.in_settings = False
+                else:
+                    arcade.close_window()
 
         else:
+            if self.game_paused:
+                self.sound_enabled = False
+                return
+
             if key == arcade.key.ESCAPE:
+                if self.music_player is not None:
+                    arcade.stop_sound(self.music_player)
                 self.in_menu = True
-                print("📋 Возвращаюсь в меню")
+                self.in_settings = False
+                self.in_rules = False
 
             elif key == arcade.key.SPACE and self.player.is_alive:
                 bomb = self.player.place_bomb()
                 if bomb:
-                    print(f"💣 [Игрок 1] Бомба поставлена!")
+                    print("💣 [Игрок 1] Бомба поставлена!")
             elif key == arcade.key.ENTER and self.player2.is_alive:
                 bomb = self.player2.place_bomb()
                 if bomb:
-                    print(f"💣 [Игрок 2] Бомба поставлена!")
+                    print("💣 [Игрок 2] Бомба поставлена!")
 
             elif key == arcade.key.R:
-                # Перезапускаем текущую карту
-                current_map = 0  # По умолчанию первую карту
-                self.setup(current_map)
-                print("🔄 Рестарт игры")
+                if self.music_player is not None:
+                    arcade.stop_sound(self.music_player)
+                self.setup(self.current_map)
 
             else:
                 self.keys_pressed.add(key)
@@ -1177,26 +1382,21 @@ class MyGame(arcade.Window):
     def on_update(self, delta_time):
         if self.in_menu:
             return
-        
+
         if self.game_paused:
             return
-        # Если один из игроков умер, только показываем сообщение
+
         if not self.player.is_alive or not self.player2.is_alive:
             if self.death_time == 0:
                 self.death_time = time.time()
-                # Определяем, кто умер
                 if not self.player.is_alive and not self.player2.is_alive:
                     print("🎮 Оба игрока погибли! Игра окончена!")
                 elif not self.player.is_alive:
                     print("🎮 Игрок 1 погиб! Игра окончена!")
                 else:
                     print("🎮 Игрок 2 погиб! Игра окончена!")
-            
-            # Не делаем автоматический рестарт, только ждем нажатия R
-            # Игровой мир больше не обновляется после смерти
             return
 
-        # Обычное обновление игры (только если оба игрока живы)
         self.player_list.update(delta_time, self.keys_pressed)
         self.player.update_animation(delta_time)
         self.player2.update_animation(delta_time)
@@ -1207,7 +1407,7 @@ class MyGame(arcade.Window):
         self.coin_list.update(delta_time)
         self.shield_list.update(delta_time)
         self.star_list.update(delta_time)
-        
+
         self.check_collisions()
 
         bombs_to_remove = []
@@ -1226,15 +1426,15 @@ class MyGame(arcade.Window):
                 self.explosion_x = bomb.center_x
                 self.explosion_y = bomb.center_y
 
-                # Проверяем урон для обоих игроков
+                self.destroy_blocks(bomb)
+
                 if bomb.owner == self.player or bomb.owner == self.player2:
                     if self.is_player_in_explosion_radius(bomb.center_x, bomb.center_y, self.player, bomb.owner):
                         self.player.take_damage(100)
-                    
+
                     if self.is_player_in_explosion_radius(bomb.center_x, bomb.center_y, self.player2, bomb.owner):
                         self.player2.take_damage(100)
 
-                destroyed = self.destroy_blocks(bomb)
                 bombs_to_remove.append(bomb)
 
         self.player.active_bombs = active_bombs1
@@ -1248,9 +1448,11 @@ class MyGame(arcade.Window):
             if self.explosion_time >= 0.5:
                 self.show_explosion = False
 
+
 def main():
     game = MyGame(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE)
     arcade.run()
-    
+
+
 if __name__ == "__main__":
     main()

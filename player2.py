@@ -1,5 +1,4 @@
 import arcade
-import math
 import time
 
 SCREEN_WIDTH = 1900
@@ -7,12 +6,9 @@ SCREEN_HEIGHT = 1050
 
 class Player2(arcade.Sprite):
     def __init__(self, game):
-        # Загружаем зеленые текстуры из папки Player2_green
-        try:
-            super().__init__("assets/Plear2_green/idle.png", scale=0.5)
-        except:
-            super().__init__(center_x=SCREEN_WIDTH - 70, center_y=SCREEN_HEIGHT - 70)
-            self.texture = arcade.make_soft_square_texture(50, arcade.color.GREEN, center_alpha=255)
+
+        super().__init__("assets/Plear2_green/idle.png", scale=0.5)
+       
 
         self.game = game
         self.hero_speed = 200
@@ -20,13 +16,10 @@ class Player2(arcade.Sprite):
         self.bomb_limit = 1
         self.active_bombs = 0
         self.last_bomb_time = 0
-        self.bomb_cooldown = 1.0  # ОДИН РАЗ В СЕКУНДУ
+        self.bomb_cooldown = 1.0 
 
-        self.speed_particles = 0
-        self.speed_particles_needed = 5
-
-        self.bomb_particles = 0
-        self.bomb_particles_needed = 8
+        self.speed_particles = 0  
+        self.bomb_particles = 0  
 
         self.coins = 0
 
@@ -45,18 +38,14 @@ class Player2(arcade.Sprite):
         self.center_x = SCREEN_WIDTH - 70
         self.center_y = SCREEN_HEIGHT - 70
 
-        # Анимация (зеленые текстуры)
-        try:
-            self.idle_texture = arcade.load_texture("assets/Plear2_green/idle.png")
-            self.texture = self.idle_texture
-            self.walk_textures = []
-            for i in range(1, 5):
-                texture = arcade.load_texture(f"assets/Plear2_green/walk{i}.png")
-                self.walk_textures.append(texture)
-        except:
-            self.walk_textures = []
-            self.idle_texture = arcade.make_soft_square_texture(50, arcade.color.GREEN, center_alpha=255)
-            self.texture = self.idle_texture
+    
+    
+        self.idle_texture = arcade.load_texture("assets/Plear2_green/idle.png")
+        self.texture = self.idle_texture
+        self.walk_textures = []
+        for i in range(1, 5):
+            texture = arcade.load_texture(f"assets/Plear2_green/walk{i}.png")
+            self.walk_textures.append(texture)
 
         self.current_texture = 0
         self.texture_change_time = 0
@@ -92,7 +81,6 @@ class Player2(arcade.Sprite):
         dx, dy = 0, 0
         effective_speed = self.get_effective_speed()
 
-        # Управление стрелками (вместо WASD)
         if arcade.key.LEFT in keys_pressed:
             dx -= effective_speed * delta_time
         if arcade.key.RIGHT in keys_pressed:
@@ -112,7 +100,6 @@ class Player2(arcade.Sprite):
         self.center_x += dx
         self.center_y += dy
 
-        # Проверка столкновений
         collision_happened = False
         
         if hasattr(self.game, 'collision_list'):
@@ -180,13 +167,11 @@ class Player2(arcade.Sprite):
 
     def add_speed_particle(self):
         self.speed_particles += 1
-        print(f"🔵 [Игрок 2] Частичка скорости: {self.speed_particles}/{self.speed_particles_needed}")
-
-        if self.speed_particles >= self.speed_particles_needed:
+        
+        if self.speed_particles % 5 == 0:
             self.upgrade_speed()
 
     def upgrade_speed(self):
-        self.speed_particles = 0
         self.speed_level += 1
 
         if self.speed_level == 2:
@@ -200,36 +185,28 @@ class Player2(arcade.Sprite):
         else:
             self.speed_multiplier = 2.0
 
-        self.speed_particles_needed = min(20, self.speed_particles_needed + 3)
-        print(f"🚀 [Игрок 2] Улучшена скорость! Уровень {self.speed_level}, множитель: {self.speed_multiplier:.1f}")
 
     def add_bomb_particle(self):
         self.bomb_particles += 1
-        print(f"🔴 [Игрок 2] Частичка бомбы: {self.bomb_particles}/{self.bomb_particles_needed}")
-
-        if self.bomb_particles >= self.bomb_particles_needed:
+        
+        if self.bomb_particles % 8 == 0:
             self.upgrade_bombs()
 
     def upgrade_bombs(self):
-        self.bomb_particles = 0
         self.bomb_level += 1
         self.bomb_limit += 1
-        self.bomb_particles_needed = min(15, self.bomb_particles_needed + 2)
-        print(f"💣 [Игрок 2] Улучшены бомбы! Теперь можно ставить {self.bomb_limit} бомб")
+        self.explosion_radius += 1
 
     def add_coin(self, amount=1):
         self.coins += amount
-        print(f"💰 [Игрок 2] Монеты: {self.coins}")
 
     def give_shield(self):
         self.has_shield = True
         self.shield_end_time = time.time() + 10
-        print(f"🛡️ [Игрок 2] Получен щит! Защита от следующего удара")
 
     def give_star(self):
         self.has_star = True
         self.star_end_time = time.time() + 8
-        print(f"⭐ [Игрок 2] Получена звезда! Следующее прикосновение убивает противника")
 
     def take_damage(self, damage):
         if not self.is_alive:
@@ -237,11 +214,9 @@ class Player2(arcade.Sprite):
 
         if self.has_shield:
             self.has_shield = False
-            print("🛡️ [Игрок 2] Щит поглотил урон!")
             return
 
         self.health -= damage
         if self.health <= 0:
             self.health = 0
             self.is_alive = False
-            print("💀 [Игрок 2] Игрок погиб!")
